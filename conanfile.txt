@@ -1,0 +1,5 @@
+[requires]
+hmlp/0.1@hyacinth/stable
+
+[generators]
+cmake
