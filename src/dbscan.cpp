@@ -87,7 +87,7 @@ int main( int argc, char *argv[] ) {
     HANDLE_ERROR( hmlp_init( &argc, &argv ) );
 
     //auto m_reach = find_nearest_neighbours<T>();
-
+    hdb
     vector<tuple<int, int, double>> mst{};
     mst.push_back(make_tuple(0, 1, 2));
     mst.push_back(make_tuple(0, 2, 4));

@@ -1,5 +1,7 @@
 #include "SingleLinkageTree.hpp"
 #include "CondensedTree.hpp"
+#include "Boruvka.hpp"
+
 #include <iostream>
 #include <chrono> 
 #include <fstream>
@@ -16,14 +18,14 @@ int main() {
     ios::sync_with_stdio(false);
 
     ifstream file("/Users/hyacinth/workspace/dbscan/data/mst.txt");
-    vector<tuple<U, U, T>> mst{};    
+    vector<tuple<U, U, T>> mst{};
     U id1;
     U id2;
     T distance;
     while (file >> id1 >> id2 >> distance) {
       mst.push_back(make_tuple(id1, id2, distance));
     }
-
+    hdbscan::Boruvka<T, U> boruvka{1500};    
     auto start = high_resolution_clock::now();
     hdbscan::SingleLinkageTree<T, U> slt{mst};
     //slt.print();

@@ -139,5 +139,5 @@ namespace hdbscan {
     }
   };  
   
-};
+}
 #endif

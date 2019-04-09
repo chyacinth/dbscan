@@ -98,6 +98,6 @@ template<typename T, typename U>
     };
 
   };  
-};
+}
 
 #endif
