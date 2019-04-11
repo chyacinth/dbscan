@@ -87,15 +87,7 @@ int main( int argc, char *argv[] ) {
     HANDLE_ERROR( hmlp_init( &argc, &argv ) );
 
     //auto m_reach = find_nearest_neighbours<T>();
-    hdb
-    vector<tuple<int, int, double>> mst{};
-    mst.push_back(make_tuple(0, 1, 2));
-    mst.push_back(make_tuple(0, 2, 4));
-    mst.push_back(make_tuple(0, 3, 1));
-    mst.push_back(make_tuple(1, 4, 3));
-    mst.push_back(make_tuple(2, 5, 2));
-    mst.push_back(make_tuple(2, 6, 5));
-
+    
 
     // [Step#5] HMLP API call to terminate the runtime.
     HANDLE_ERROR( hmlp_finalize() );
