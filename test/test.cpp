@@ -7,7 +7,7 @@
 #include <fstream>
 
 using namespace std;
-using namespace std::chrono; 
+using namespace std::chrono;
 
 int main() {
   try
@@ -24,18 +24,19 @@ int main() {
     T distance;
     while (file >> id1 >> id2 >> distance) {
       mst.push_back(make_tuple(id1, id2, distance));
-    }
-    hdbscan::Boruvka<T, U> boruvka{1500};    
+    }    
+
+    hdbscan::Boruvka<T, U> boruvka{1500};        
     auto start = high_resolution_clock::now();
-    hdbscan::SingleLinkageTree<T, U> slt{mst};
-    //slt.print();
-    hdbscan::CondensedTree<T, U> ct{slt, 6};
+    hdbscan::SingleLinkageTree<T, U> slt{mst, 2};
+    hdbscan::CondensedTree<T, U> ct{slt};
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);     
-    ct.print();
+    //ct.print();
     cout << "Time taken by function: "
-         << duration.count() << " milliseconds" << endl; 
-  }
+      << duration.count() << " milliseconds" << endl; 
+    ct.print();
+  }  
   catch ( const exception & e )
   {
     cout << e.what() << endl;

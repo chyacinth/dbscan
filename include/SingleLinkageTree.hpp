@@ -16,9 +16,9 @@ template<typename T, typename U>
   class SingleLinkageTree {
     friend CondensedTree<T, U>;
    public:   
-    SingleLinkageTree(const std::vector<std::tuple<U, U, T>> &mst): 
+    SingleLinkageTree(const std::vector<std::tuple<U, U, T>> &mst, int minimum_cluster_size): 
     // first node that has > 0 distance: node_nums_mst_
-        nodes_(2 * mst.size() + 1) {
+      nodes_(2 * mst.size() + 1), minimum_cluster_size_(minimum_cluster_size) {
 
       total_nums_ = mst.size() + 1;
       node_nums_mst_ = mst.size() + 1;
@@ -31,15 +31,15 @@ template<typename T, typename U>
       }
     };
 
-    void get_leaves(const U node_id, const T distance, std::vector<std::pair<U, T>> &result) const {
+    void get_leaves(const U node_id, std::vector<U> &result) const {      
       if (nodes_[node_id].left != -1) {
-        get_leaves(nodes_[node_id].left, distance, result);
+        get_leaves(nodes_[node_id].left, result);
       }
       if (nodes_[node_id].right != -1) {
-        get_leaves(nodes_[node_id].right, distance, result);
+        get_leaves(nodes_[node_id].right, result);
       }
       if (nodes_[node_id].left == -1 && nodes_[node_id].right == -1) {
-        result.emplace_back(node_id, 1 / distance);
+        result.emplace_back(node_id);        
       }
     }
     
@@ -75,6 +75,8 @@ template<typename T, typename U>
     std::vector<Node> nodes_;
     int total_nums_ = 0;
     int node_nums_mst_ = 0;    
+    int minimum_cluster_size_ = 0;
+    int cluster_num_ = 0;
 
     U find(U x, int id) {
       while (nodes_[x].rep >= 0) {
@@ -93,6 +95,12 @@ template<typename T, typename U>
       nodes_[rx].parent = id;
       nodes_[ry].parent = id;
       nodes_[id].size = nodes_[rx].size + nodes_[ry].size;
+      if (nodes_[id].size >= minimum_cluster_size_) {
+        if ((nodes_[rx].size >= minimum_cluster_size_ && nodes_[ry].size >= minimum_cluster_size_) || 
+        (nodes_[rx].size < minimum_cluster_size_ && nodes_[ry].size < minimum_cluster_size_)) {
+          ++cluster_num_;
+        }
+      }
       nodes_[id].left = rx;
       nodes_[id].right = ry;
     };

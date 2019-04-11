@@ -8,73 +8,100 @@ namespace hdbscan {
   class CondensedTree
   {  
    public:
-    CondensedTree(const SingleLinkageTree<T, U> &slt, int minimum_cluster_size)
-      : minimum_cluster_size_(minimum_cluster_size) {
+    CondensedTree(const SingleLinkageTree<T, U> &slt)
+      : clusters_(slt.cluster_num_), minimum_cluster_size_(slt.minimum_cluster_size_) {      
       int root = slt.nodes_.size() - 1;
-      clusters_.emplace_back();      
+      //clusters_.emplace_back();
       clusters_[0].lambda_birth = 1 / slt.nodes_[root].distance;
+      clusters_[0].remaining_nodes_num = slt.nodes_[root].size;
       build(slt, root, cluster_num_++);
       extract_clusters();
     }
-    void build(const SingleLinkageTree<T, U> &slt, U root, U cluster_id) {
-      auto& node = slt.nodes_[root];
+    void build(const SingleLinkageTree<T, U> &slt, const U root, const U cluster_id) {
+      const auto& node = slt.nodes_[root];
       bool keep_left = false;
-      bool keep_right = false;
+      bool keep_right = false;      
+      const int left_size = slt.nodes_[node.left].size;
+      const int right_size = slt.nodes_[node.right].size;
 
-      if (node.left != -1 && slt.nodes_[node.left].size >= minimum_cluster_size_) {
+      if (node.left != -1 && left_size >= minimum_cluster_size_) {
         keep_left = true;
       }
-      if (node.right != -1 && slt.nodes_[node.right].size >= minimum_cluster_size_) {
+      if (node.right != -1 && right_size >= minimum_cluster_size_) {
         keep_right = true;
       }
 
+      int fall_out_num = 0;
+
       if (!keep_left && node.left != -1) {
-        slt.get_leaves(node.left, node.distance, clusters_[cluster_id].fall_out_nodes_);
+        fall_out_num += left_size;
+        slt.get_leaves(node.left, clusters_[cluster_id].fall_out_nodes);
       }
       if (!keep_right && node.right != -1) {
-        slt.get_leaves(node.right, node.distance, clusters_[cluster_id].fall_out_nodes_);
+        fall_out_num += right_size;
+        slt.get_leaves(node.right, clusters_[cluster_id].fall_out_nodes);
       }
 
-      if (keep_left && !keep_right) {        
+      if (keep_left && !keep_right) {
+        clusters_[cluster_id].stability += (1 / node.distance - clusters_[cluster_id].lambda_birth) * clusters_[cluster_id].remaining_nodes_num;
+        clusters_[cluster_id].remaining_nodes_num -= fall_out_num;
+        clusters_[cluster_id].lambda_birth = 1 / node.distance;
         build(slt, node.left, cluster_id);
       }
 
-      if (keep_right && !keep_left) {        
+      if (keep_right && !keep_left) {
+        clusters_[cluster_id].stability += (1 / node.distance - clusters_[cluster_id].lambda_birth) * clusters_[cluster_id].remaining_nodes_num;
+        clusters_[cluster_id].remaining_nodes_num -= fall_out_num;
+        clusters_[cluster_id].lambda_birth = 1 / node.distance;
         build(slt, node.right, cluster_id);
       }
 
       if (keep_left && keep_right) {
         U left_cluster = cluster_num_++;
-        clusters_.emplace_back();
+        //clusters_.emplace_back();
         clusters_[left_cluster].lambda_birth = 1 / node.distance;
+        clusters_[left_cluster].remaining_nodes_num = left_size;
         U right_cluster = cluster_num_++;
-        clusters_.emplace_back();
+        //clusters_.emplace_back();
         clusters_[right_cluster].lambda_birth = 1 / node.distance;
+        clusters_[right_cluster].remaining_nodes_num = right_size;
+
         clusters_[cluster_id].left = left_cluster;
         clusters_[cluster_id].right = right_cluster;
+
+        clusters_[cluster_id].stability += (1 / node.distance - clusters_[cluster_id].lambda_birth) * clusters_[cluster_id].remaining_nodes_num;
+        
+        clusters_[cluster_id].remaining_nodes_num = 0;
+        clusters_[cluster_id].lambda_birth = 1 / node.distance;
 
         build(slt, node.left, left_cluster);
         build(slt, node.right, right_cluster);
 
-        for (auto node_lam : clusters_[left_cluster].fall_out_nodes_) {
-          clusters_[cluster_id].fall_out_nodes_.emplace_back(node_lam.first, 1 / node.distance);
+        /*for (auto node_lam : clusters_[left_cluster].fall_out_nodes) {
+          clusters_[cluster_id].fall_out_nodes.emplace_back(node_lam.first, 1 / node.distance);
         }
-        for (auto node_lam : clusters_[right_cluster].fall_out_nodes_) {
-          clusters_[cluster_id].fall_out_nodes_.emplace_back(node_lam.first, 1 / node.distance);
-        }
+        for (auto node_lam : clusters_[right_cluster].fall_out_nodes) {
+          clusters_[cluster_id].fall_out_nodes.emplace_back(node_lam.first, 1 / node.distance);
+        }*/
       }
 
       /*if (!keep_left && !keep_right) {
-        slt.get_leaves(root, node.distance, clusters_[cluster_id].fall_out_nodes_);
+        slt.get_leaves(root, clusters_[cluster_id].fall_out_nodes);
       }*/
 
     }
 
     void extract_clusters() {
       selected_ = std::vector<char>(cluster_num_);
-      for (U i = 0; i < cluster_num_; ++i)
-        clusters_[i].stability = calc_stability(i);
+
       update_stability(0);
+      
+      for (U i = 0; i < cluster_num_; ++i) {
+        if (selected_[i]) {
+          collect_points(clusters_[i].left, clusters_[i].fall_out_nodes);
+          collect_points(clusters_[i].right, clusters_[i].fall_out_nodes);
+        }        
+      }
     }
 
     T update_stability(U root_id) {
@@ -103,26 +130,43 @@ namespace hdbscan {
       return root_node.stability;
     }
     
-    void print() {
+    void collect_points(U root, std::vector<U>& result) {
+      if (root == -1) return;
+      for (auto i : clusters_[root].fall_out_nodes) {
+        result.emplace_back(i);
+      }
+      collect_points(clusters_[root].left, result);
+      collect_points(clusters_[root].right, result);
+    }
+
+    void print(bool verbose = false) {
       std::cout << "------------Clustering Result------------" << std::endl;
+      std::cout << "Total cluster number: " << cluster_num_ << std::endl;            
+      int selected_cnt = 0;
       for (int i = 0; i < cluster_num_; ++i) {
         if (selected_[i]) {
-          std::cout << "Cluster id: " << i << std::endl;        
-          for (auto node_lambda : clusters_[i].fall_out_nodes_) {
-            std::cout << node_lambda.first << " ";
+          ++selected_cnt;
+          if (verbose) {
+            std::cout << "Cluster id: " << i << std::endl;        
+            for (auto node : clusters_[i].fall_out_nodes) {
+              std::cout << node << " ";
+            }          
+            std::cout << std::endl;
           }
-          std::cout << std::endl;
         }
       }
+      std::cout << "Selected cluster number: " << selected_cnt << std::endl;
     }
+
    private:
     struct Node {
       U left = -1;
       U right = -1;
       // [node_id, lambda]
-      std::vector<std::pair<U, T>> fall_out_nodes_;
+      std::vector<U> fall_out_nodes;
       T stability = 0;
-      T lambda_birth = 0;      
+      T lambda_birth = 0;
+      int remaining_nodes_num = 0;
     };
     std::vector<Node> clusters_;
     std::vector<char> selected_;
@@ -132,7 +176,7 @@ namespace hdbscan {
     T calc_stability(U cluster_id) {
       T result = 0;
       T lambda_birth = clusters_[cluster_id].lambda_birth;
-      for (auto node_lambda : clusters_[cluster_id].fall_out_nodes_) {
+      for (auto node_lambda : clusters_[cluster_id].fall_out_nodes) {
         result += node_lambda.second - lambda_birth;
       }
       return result;
