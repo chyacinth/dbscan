@@ -116,21 +116,21 @@ public:
     }
   }
 
-  inline U relabel() {
-    U count_relabel = 0;
-    for (U i = 0; i < n; i++) {
-      if (end_ind[i].w == inf) continue;
-      U this_end = rep[i];
-      U that_end = rep[end_ind[this_end].v];
-      U third_end = rep[end_ind[that_end].v];
-      if (third_end != this_end || this_end > that_end) {
-        rep[this_end] = that_end;
-        edge_set.push_back(end_ind[this_end]);
-        count_relabel++;
-      }
-    }
-    return count_relabel;
-  }
+//  inline U relabel() {
+//    U count_relabel = 0;
+//    for (U i = 0; i < n; i++) {
+//      if (end_ind[i].w == inf) continue;
+//      U this_end = rep[i];
+//      U that_end = rep[end_ind[this_end].v];
+//      U third_end = rep[end_ind[that_end].v];
+//      if (third_end != this_end || this_end > that_end) {
+//        rep[this_end] = that_end;
+//        edge_set.push_back(end_ind[this_end]);
+//        count_relabel++;
+//      }
+//    }
+//    return count_relabel;
+//  }
 
   inline U relabel3() {
     U count_relabel = 0;
@@ -151,44 +151,44 @@ public:
     return count_relabel;
   }
 
-  inline U relabel2() {
-    U count_relabel = 0;
-    auto new_end_ind = std::vector<edge_t>(n, edge_t(0,0,inf));
-    for (U i = 0; i < n; i++) {
-      if (end_ind[i].w == inf) continue;
-      U u = end_ind[i].u;
-      new_end_ind[u] = end_ind[i];
-    }
-    end_ind = new_end_ind;
-    for (U i = 0; i < n; i++) {
-      if (end_ind[i].w == inf) continue;
-      U this_end_rep = rep[i];
-      U that_end = end_ind[i].v;
-      U that_end_rep = rep[that_end];
-      U third_end_rep = rep[end_ind[that_end].v];
-      if (third_end_rep != this_end_rep || this_end_rep > that_end_rep) {
-        rep[this_end_rep] = that_end_rep;
-        edge_set.push_back(end_ind[i]);
-        count_relabel++;
-      }
-    }
-    return count_relabel;
-  }
+//  inline U relabel2() {
+//    U count_relabel = 0;
+//    auto new_end_ind = std::vector<edge_t>(n, edge_t(0,0,inf));
+//    for (U i = 0; i < n; i++) {
+//      if (end_ind[i].w == inf) continue;
+//      U u = end_ind[i].u;
+//      new_end_ind[u] = end_ind[i];
+//    }
+//    end_ind = new_end_ind;
+//    for (U i = 0; i < n; i++) {
+//      if (end_ind[i].w == inf) continue;
+//      U this_end_rep = rep[i];
+//      U that_end = end_ind[i].v;
+//      U that_end_rep = rep[that_end];
+//      U third_end_rep = rep[end_ind[that_end].v];
+//      if (third_end_rep != this_end_rep || this_end_rep > that_end_rep) {
+//        rep[this_end_rep] = that_end_rep;
+//        edge_set.push_back(end_ind[i]);
+//        count_relabel++;
+//      }
+//    }
+//    return count_relabel;
+//  }
 
-  inline void shrink() {
-    for (U i = 0; i < n; i++) {
-      U root = i;
-      while (root != rep[root])
-        root = rep[root];
-      U now = i;
-      U tmp;
-      while (now != root) {
-        tmp = rep[now];
-        rep[now] = root;
-        now = tmp;
-      }
-    }
-  }
+//  inline void shrink() {
+//    for (U i = 0; i < n; i++) {
+//      U root = i;
+//      while (root != rep[root])
+//        root = rep[root];
+//      U now = i;
+//      U tmp;
+//      while (now != root) {
+//        tmp = rep[now];
+//        rep[now] = root;
+//        now = tmp;
+//      }
+//    }
+//  }
   
   inline void pointer_jump() {
     // pointer jump: seems slightly slower, even in parallel
