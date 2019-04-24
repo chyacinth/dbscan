@@ -9,4 +9,4 @@ target_include_directories(testSingleLinkageTree PRIVATE "${PROJECT_SOURCE_DIR}/
 
 target_compile_options(testSingleLinkageTree PRIVATE "$<$<CONFIG:Release>:-O3>")
 
-target_compile_options(testSingleLinkageTree PRIVATE -Wall -Werror -Wextra -pedantic)
+target_compile_options(testSingleLinkageTree PRIVATE -Wall -Werror -Wextra -pedantic -Wlifetime)

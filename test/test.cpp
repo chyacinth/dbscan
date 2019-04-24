@@ -23,7 +23,7 @@ int main() {
     U id2;
     T distance;
     while (file >> id1 >> id2 >> distance) {
-      mst.push_back(make_tuple(id1, id2, distance));
+      mst.emplace_back(make_tuple(id1, id2, distance));
     }    
 
     hdbscan::Boruvka<T, U> boruvka{1500};        
