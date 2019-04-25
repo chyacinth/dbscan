@@ -2,8 +2,6 @@
 #define BORUVKA_H_
 //#define NDEBUG
 
-// backup: sparse
-
 #include <algorithm>
 #include <iostream>
 #include <numeric>
@@ -25,16 +23,18 @@
 // #define par_for for
 
 namespace hdbscan {
+using U64 = uint_fast64_t;
 template <typename T, typename U> class Boruvka {
   struct edge_t {
     U u;
     U v;
     T w;
     public:
-    edge_t() {};
+    edge_t() = default;
     edge_t(U u_, U v_, T w_) : u(u_), v(v_), w(w_) {};
   };
   constexpr static auto now_time = std::chrono::high_resolution_clock::now;
+  using edge_p = std::pair<double, uint_fast64_t>;
 
 //  inline U argmin(std::vector<edge_t> const &v, const U size) {
 //    auto result = std::min_element(v.begin(), v.begin() + size,
@@ -63,55 +63,53 @@ public:
   T inf = std::numeric_limits<T>::infinity();
   const U n, m;
   U vertex_left;
-  std::vector<std::vector<edge_t>> edges;
+  std::vector<edge_p> edges;
   std::vector<edge_t> edge_set;
   std::vector<U> rep;
   std::vector<edge_t> end_ind;
-//  std::vector<U> length;
 
   std::map<std::string, double> profiler;
 
   Boruvka(U n_, U m_) : n(n_), m(m_), vertex_left(n_) {
-    edges = std::vector<std::vector<edge_t>>(n, std::vector<edge_t>(m));
+    edges = std::vector<edge_p>(size_t(n) * m);
     // random_device rd;
     std::mt19937 gen(0);
     std::uniform_real_distribution<T> weight_gen(1.0, 100.0);
     std::uniform_int_distribution<U> id_gen(0, n-1);
-    for (U i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++) {
       std::unordered_set<U> gen_set;
-      for (U j = 0; j < m; j++) {
+      for (size_t j = 0; j < m; j++) {
         U generated = id_gen(gen);
         while (generated == i or gen_set.find(generated) != gen_set.end()) {
           generated = id_gen(gen);
         }
-        edges[i][j] = edge_t(i, generated, weight_gen(gen));
+        edges[i * m + j] = edge_p(weight_gen(gen), generated);
       }
     }
     end_ind = std::vector<edge_t>(n, edge_t(0,0,inf));
-    // label stores the roots of the components
     rep = std::vector<U>(n);
     std::iota(rep.begin(), rep.end(), 0);
-//    length = std::vector<U>(n, m);
   }
 
   inline void find_min() {
-    par_for (U i = 0; i < n; i++) {
+    par_for (size_t i = 0; i < n; i++) {
       U min_i = 0;
       T min_w = inf;
-      for (auto j = edges[i].begin(); j != edges[i].end(); j++) {
-        U v = j->v;
+      for (size_t j = 0; j < m; j++) {
+        U v = edges[i * m + j].second;
         if (rep[i] == rep[v]) continue;
-        T w = j->w;
+        T w = edges[i * m + j].first;
         if (w < min_w) {
-          min_i = std::distance(edges[i].begin(), j);
+          min_i = j;
           min_w = w;
         }
         if (w < end_ind[rep[v]].w) {
-          pwrite(end_ind[rep[v]], *j);
+          pwrite(end_ind[rep[v]], edge_t(U(i), v, w));
         }
       }
       if (min_w < inf) {
-        pwrite(end_ind[rep[i]], edges[i][min_i]);
+        auto const & e = edges[i * m + min_i];
+        pwrite(end_ind[rep[i]], edge_t(U(i), e.second, e.first));
       }
     }
   }
@@ -134,7 +132,7 @@ public:
 
   inline U relabel3() {
     U count_relabel = 0;
-    for (U i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++) {
       if (end_ind[i].w == inf) continue;
       U this_end = rep[i];
       U that_end, third_end;
@@ -191,12 +189,9 @@ public:
 //  }
   
   inline void pointer_jump() {
-    // pointer jump: seems slightly slower, even in parallel
-    par_for (U i = 0; i < n; i++) {
+    par_for (size_t i = 0; i < n; i++)
       while (rep[i] != rep[rep[i]])
         rep[i] = rep[rep[i]];
-//      label[i] = rep[this_label];
-    }
   }
 
   inline void pwrite(edge_t & ptr, edge_t const & new_val) {
