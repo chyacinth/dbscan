@@ -23,7 +23,7 @@
 // #define par_for for
 
 namespace hdbscan {
-using U64 = uint_fast64_t;
+
 template <typename T, typename U> class Boruvka {
   struct edge_t {
     U u;
@@ -70,22 +70,32 @@ public:
 
   std::map<std::string, double> profiler;
 
+  inline T get_weight(std::pair<T, T> const & a, std::pair<T, T> const & b) {
+    return std::pow(std::pow(a.first - b.first, 2.) + std::pow(a.second - b.second, 2.), 0.5);
+  };
   Boruvka(U n_, U m_) : n(n_), m(m_), vertex_left(n_) {
     edges = std::vector<edge_p>(size_t(n) * m);
     // random_device rd;
     std::mt19937 gen(0);
-    std::uniform_real_distribution<T> weight_gen(1.0, 100.0);
+    std::uniform_real_distribution<T> pos_gen(0.0, 1000.0);
     std::uniform_int_distribution<U> id_gen(0, n-1);
+
+    // random initialization
+    std::vector<std::pair<T, T>> points(n);
+    for (size_t i = 0; i < n; i++) {
+      points[i] = {pos_gen(gen), pos_gen(gen)};
+    }
     for (size_t i = 0; i < n; i++) {
       std::unordered_set<U> gen_set;
       for (size_t j = 0; j < m; j++) {
-        U generated = id_gen(gen);
-        while (generated == i or gen_set.find(generated) != gen_set.end()) {
-          generated = id_gen(gen);
-        }
-        edges[i * m + j] = edge_p(weight_gen(gen), generated);
+        U g;
+        do {
+          g = id_gen(gen);
+        } while (g == i or gen_set.find(g) != gen_set.end());
+        edges[i * m + j] = edge_p(get_weight(points[i], points[g]), g);
       }
     }
+
     end_ind = std::vector<edge_t>(n, edge_t(0,0,inf));
     rep = std::vector<U>(n);
     std::iota(rep.begin(), rep.end(), 0);
