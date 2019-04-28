@@ -1,10 +1,11 @@
-#include "SingleLinkageTree.hpp"
-#include "CondensedTree.hpp"
-#include "Boruvka.hpp"
-
 #include <iostream>
 #include <chrono> 
 #include <fstream>
+
+#include "SingleLinkageTree.hpp"
+#include "CondensedTree.hpp"
+#include "Boruvka.hpp"
+#include "Distributed_boruvka.hpp"
 
 using namespace std;
 using namespace std::chrono;
@@ -23,7 +24,7 @@ int main() {
     U id2;
     T distance;
     while (file >> id1 >> id2 >> distance) {
-      mst.push_back(make_tuple(id1, id2, distance));
+      mst.emplace_back(make_tuple(id1, id2, distance));
     }    
 
     hdbscan::Boruvka<T, U> boruvka{1500};        
