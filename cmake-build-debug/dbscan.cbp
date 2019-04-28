@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="dbscan"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="icc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\test\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/parallels/workspace/dbscan/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/home/parallels/workspace/dbscan/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="dbscan">
+				<Option output="/home/parallels/workspace/dbscan/cmake-build-debug/dbscan" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/parallels/workspace/dbscan/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="icc"/>
+				<Compiler>
+					<Add directory="/home/parallels/workspace/dbscan/include"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include/intel64"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include/icc"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include"/>
+					<Add directory="/usr/include/c++/5.5.0"/>
+					<Add directory="/usr/include/c++/5.5.0/backward"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed"/>
+					<Add directory="/usr/include/"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/5.5.0"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 dbscan"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="dbscan/fast">
+				<Option output="/home/parallels/workspace/dbscan/cmake-build-debug/dbscan" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/parallels/workspace/dbscan/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="icc"/>
+				<Compiler>
+					<Add directory="/home/parallels/workspace/dbscan/include"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include/intel64"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include/icc"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include"/>
+					<Add directory="/usr/include/c++/5.5.0"/>
+					<Add directory="/usr/include/c++/5.5.0/backward"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed"/>
+					<Add directory="/usr/include/"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/5.5.0"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 dbscan/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/home/parallels/workspace/dbscan/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="testSingleLinkageTree">
+				<Option output="/home/parallels/workspace/dbscan/cmake-build-debug/test/testSingleLinkageTree" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/parallels/workspace/dbscan/cmake-build-debug/test"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="icc"/>
+				<Compiler>
+					<Add directory="/home/parallels/workspace/dbscan/include"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/mpi/intel64/include"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include/intel64"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include/icc"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include"/>
+					<Add directory="/usr/include/c++/5.5.0"/>
+					<Add directory="/usr/include/c++/5.5.0/backward"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed"/>
+					<Add directory="/usr/include/"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/5.5.0"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/test/Makefile&quot;  VERBOSE=1 testSingleLinkageTree"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/test/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/test/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/test/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="testSingleLinkageTree/fast">
+				<Option output="/home/parallels/workspace/dbscan/cmake-build-debug/test/testSingleLinkageTree" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/parallels/workspace/dbscan/cmake-build-debug/test"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="icc"/>
+				<Compiler>
+					<Add directory="/home/parallels/workspace/dbscan/include"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/mpi/intel64/include"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include/intel64"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include/icc"/>
+					<Add directory="/opt/intel/compilers_and_libraries_2018.5.274/linux/compiler/include"/>
+					<Add directory="/usr/include/c++/5.5.0"/>
+					<Add directory="/usr/include/c++/5.5.0/backward"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed"/>
+					<Add directory="/usr/include/"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/5.5.0"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/test/Makefile&quot;  VERBOSE=1 testSingleLinkageTree/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/test/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/test/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/home/parallels/workspace/dbscan/cmake-build-debug/test/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/parallels/workspace/dbscan/src/dbscan.cpp">
+			<Option target="dbscan"/>
+		</Unit>
+		<Unit filename="/home/parallels/workspace/dbscan/test/test.cpp">
+			<Option target="testSingleLinkageTree"/>
+		</Unit>
+		<Unit filename="/home/parallels/workspace/dbscan/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/parallels/workspace/dbscan/test/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\test\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
