@@ -27,7 +27,7 @@ int main() {
       mst.emplace_back(make_tuple(id1, id2, distance));
     }    
 
-    hdbscan::Boruvka<T, U> boruvka{1500};        
+    //hdbscan::Boruvka<T, U> boruvka{1500};
     auto start = high_resolution_clock::now();
     hdbscan::SingleLinkageTree<T, U> slt{mst, 2};
     hdbscan::CondensedTree<T, U> ct{slt};

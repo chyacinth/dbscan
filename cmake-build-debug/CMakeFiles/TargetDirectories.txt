@@ -1,6 +1,0 @@
-/home/parallels/workspace/dbscan/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/parallels/workspace/dbscan/cmake-build-debug/CMakeFiles/dbscan.dir
-/home/parallels/workspace/dbscan/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/parallels/workspace/dbscan/cmake-build-debug/test/CMakeFiles/rebuild_cache.dir
-/home/parallels/workspace/dbscan/cmake-build-debug/test/CMakeFiles/testSingleLinkageTree.dir
-/home/parallels/workspace/dbscan/cmake-build-debug/test/CMakeFiles/edit_cache.dir

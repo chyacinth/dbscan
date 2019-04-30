@@ -25,6 +25,8 @@
 /** Use implicit kernel matrices (only coordinates are stored). */
 #include <containers/KernelMatrix.hpp>
 /** Use STL and HMLP namespaces. */
+#include "Distributed_boruvka.hpp"
+
 using namespace std;
 using namespace hmlp;
 
@@ -37,7 +39,7 @@ int main( int argc, char *argv[] )
   try
   {
     /** Use float as data type. */
-    using T = float;
+    using T = double;
     /** [Required] Problem size. */
     size_t n = 5000;
     /** Maximum leaf node size (not used in neighbor search). */
@@ -61,31 +63,7 @@ int main( int argc, char *argv[] )
     /** [Step#0] HMLP API call to initialize the runtime. */
     HANDLE_ERROR( hmlp_init( &argc, &argv, CommGOFMM ) );
 
-    /** [Step#1] Create a configuration for generic SPD matrices. */
-    gofmm::Configuration<T> config1( ANGLE_DISTANCE, n, m, k, s, stol, budget );
-    /** [Step#2] Create a dense random SPD matrix. */
-    SPDMatrix<T> K1( n, n );
-    K1.randspd( 0.0, 1.0 );
-    /** [Step#2.5] Broadcast K to all other ranks. */
-    mpi::Bcast( K1.data(), n * n, 0, CommGOFMM );
-    /** [Step#3] Create a distributed randomized splitter. */
-    mpigofmm::randomsplit<SPDMatrix<T>, 2, T> rkdtsplitter1( K1 );
-    /** [Step#4] Perform the iterative neighbor search. */
-    auto neighbors1 = mpigofmm::FindNeighbors( K1, rkdtsplitter1, config1, CommGOFMM );
-    /** Here neighbors1 is distributed in DistData<STAR, CBLK, T> over CommGOFMM. */
-    int rank; mpi::Comm_rank( CommGOFMM, &rank );
-    int size; mpi::Comm_size( CommGOFMM, &size );
-    printf( " rank/size %d/%d owns %lu/%lu rows and %lu/%lu columns of neighbors1\n ",
-            rank, size,
-            neighbors1.row_owned(), neighbors1.row(),
-            neighbors1.col_owned(), neighbors1.col() );
-    /** To be specific, this is called Elemental distribution (cylic distribution). */
-    for ( int i = 0; i < std::min( k, (size_t)10 ); i ++ )
-      printf( "rank/size %d/%d [%E,%5lu]\n", rank, size,
-              neighbors1( i, rank ).first, neighbors1( i, rank ).second );
-    for ( int i = 0; i < std::min( k, (size_t)10 ); i ++ )
-      printf( "rank/size %d/%d [%E,%5lu]\n", rank, size,
-              neighbors1( i, rank + size ).first, neighbors1( i, rank + size ).second );
+
 
     /** [Step#1] Create a configuration for kernel matrices. */
     gofmm::Configuration<T> config2( GEOMETRY_DISTANCE, n, m, k, s, stol, budget );
@@ -98,9 +76,20 @@ int main( int argc, char *argv[] )
     /** [Step#4] Perform the iterative neighbor search. */
     auto neighbors2 = mpigofmm::FindNeighbors( K2, rkdtsplitter2, config2, CommGOFMM );
 
+
+
+    // Distribtued Boruvka
+    hdbscan::Distributed_Boruvka<T, uint32_t > dist_boruvka {neighbors2, CommGOFMM};
+    dist_boruvka.run();
+
+    std::cout << "Boruvka Finished!" << std::endl;
+
+
     /** [Step#5] HMLP API call to terminate the runtime. */
     HANDLE_ERROR( hmlp_finalize() );
     /** Finalize Message Passing Interface. */
+
+
     mpi::Finalize();
   }
   catch ( const exception & e )
