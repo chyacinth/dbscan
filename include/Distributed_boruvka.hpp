@@ -53,7 +53,7 @@ void my_prod(void *in_, void *inout_, int *len, MPI_Datatype *dptr) {
 template <typename T, typename U> class Distributed_Boruvka : public mpi::MPIObject{
 
   constexpr static auto now_time = std::chrono::high_resolution_clock::now;
-  using edge_p = std::pair<double, uint_fast64_t>;
+  using edge_p = std::pair<T, size_t>;
 
 //  inline U argmin(std::vector<edge_t> const &v, const U size) {
 //    auto result = std::min_element(v.begin(), v.begin() + size,
@@ -80,7 +80,8 @@ template <typename T, typename U> class Distributed_Boruvka : public mpi::MPIObj
 
 public:
   T inf = std::numeric_limits<T>::infinity();
-  const U local_n, m, n;
+  const U m, n;
+  U local_n;
   U vertex_left;
   std::vector<edge_p> edges2;
   DistData<STAR, CBLK, pair<T, size_t>>& edges;
@@ -99,28 +100,42 @@ public:
 
 
 
-  Distributed_Boruvka(DistData<STAR, CBLK, pair<T, size_t>> &edges_, mpi::Comm comm_) : mpi::MPIObject(comm_),
-  edges(edges_), local_n(edges_.col_owned()), m(edges_.row_owned()), n(edges_.col()), vertex_left(edges_.col()) {
+  Distributed_Boruvka(DistData<STAR, CBLK, pair<T, size_t>>& edges_, mpi::Comm comm_) : mpi::MPIObject(comm_),
+      m(edges_.row()), n(edges_.col()), vertex_left(edges_.col()), edges(edges_) {
+    size_t edge_n = n % GetCommSize();
+    local_n = ( n - edge_n ) / GetCommSize();
     edges2 = std::vector<edge_p>(size_t(local_n) * m);
-    // random_device rd;
-    std::mt19937 gen(0);
+    random_device rd;
+    std::mt19937 gen(56419847);
     std::uniform_real_distribution<T> pos_gen(0.0, 1000.0);
     std::uniform_int_distribution<U> id_gen(0, n-1);
 
+    /*
     // random initialization
-    /*std::vector<std::pair<T, T>> points(locol_n);
-    for (size_t i = 0; i < locol_n; i++) {
+    std::vector<std::pair<T, T>> points(n);
+    for (size_t i = 0; i < n; i++) {
       points[i] = {pos_gen(gen), pos_gen(gen)};
     }
-    for (size_t i = 0; i < locol_n; i++) {
+    for (size_t i = 0; i < local_n; i++) {
       std::unordered_set<U> gen_set;
       for (size_t j = 0; j < m; j++) {
         U g;
         do {
           g = id_gen(gen);
-        } while (g == i or gen_set.find(g) != gen_set.end());
-        edges2[i * m + j] = edge_p(get_weight(points[i], points[g]), g);
+        } while (g == GetCommRank() + i * GetCommSize() or gen_set.find(g) != gen_set.end());
+        gen_set.insert(g);
+        edges2[i * m + j] = edge_p(get_weight(points[GetCommRank() + i * GetCommSize()], points[g]), g);
+        //edges2[j * local_n + i] = edge_p(get_weight(points[GetCommRank() + i * GetCommSize()], points[g]), g);
       }
+    }
+    edges = DistData<STAR, CBLK, pair<T, size_t>>(m, n, edges2, GetComm());*/
+
+    /*if (GetCommRank() == 1)
+    for ( int i = 0; i < std::min( m, (U)100 ); i ++ ) {
+      for (int j = 0; j < std::min(local_n, (U)100); ++j)
+        printf( "[%5.2lf,%5lu] ",edges( i, GetCommRank() + j * GetCommSize() ).first, edges( i, GetCommRank() + j * GetCommSize() ).second);
+      printf("\n");
+      printf("OK\n");
     }*/
 
     end_ind = std::vector<edge_t>(n, edge_t(0,0,inf));
@@ -134,7 +149,7 @@ public:
     MPI_Datatype types[3] = {MPI_UINT32_T, MPI_UINT32_T, MPI_DOUBLE};
     MPI_Type_create_struct(3, block_length, displacements, types, &etype);
     MPI_Type_commit(&etype);
-    MPI_Op_create(my_prod, 1, &my_op);
+    MPI_Op_create(my_prod, 0, &my_op);
   }
 
   inline void find_min() {
@@ -153,7 +168,7 @@ public:
           min_w = w;
         }
         if (w < end_ind[rep[v]].w) {
-          pwrite(end_ind[rep[v]], edge_t(U(i), v, w));
+          pwrite(end_ind[rep[v]], edge_t(static_cast<U>(i), v, w));
         }
       }
       if (min_w < inf) {
@@ -240,14 +255,11 @@ public:
 
   inline void pointer_jump() {
     //par_
-    for (size_t i = 0; i < local_n; i++) {
+    for (size_t i = 0; i < n; i++) {
       int cnt = 0;
       while (rep[i] != rep[rep[i]]) {
         ++cnt;
         rep[i] = rep[rep[i]];
-        if (cnt > 1000) {
-          std::cout << rep[i] << " " << i << std::endl;
-        }
       }
 
     }
@@ -276,7 +288,7 @@ public:
 //  }
 
   int output_check() {
-    std::vector<U> rep_check(local_n);
+    std::vector<U> rep_check(n);
     std::iota(rep_check.begin(), rep_check.end(), 0);
     for (auto const &edge : edge_set) {
       U u = edge.u;
@@ -315,7 +327,7 @@ public:
   }
 
   void run() {
-    int inspect = 0;
+    int inspect = GetCommSize() + 1;
     auto start = now_time();
     reset_clock();
     while (true) {
@@ -324,27 +336,20 @@ public:
 
       if (GetCommRank() == inspect) {
         std::cout << "after find_min " << GetCommRank() << std::endl;
-        for (int i = 3000; i < 3000; ++i) {
-          std::cout << end_ind[i].u << " " << end_ind[i].v << " "
-                    << end_ind[i].w << std::endl;
-        }
       }
 
       edge_t *ei = end_ind.data();
 
       // TODO: remove barrier?
-      MPI_Barrier(GetComm());
+      //MPI_Barrier(GetComm());
       if (GetCommRank() == 0) {
-        MPI_Reduce(MPI_IN_PLACE, ei, static_cast<int>(end_ind.size()), etype, my_op, 0, GetComm());
+        MPI_Reduce(MPI_IN_PLACE, ei, static_cast<int>(n), etype, my_op, 0, GetComm());
       } else {
-        MPI_Reduce(ei, ei, static_cast<int>(end_ind.size()), etype, my_op, 0, GetComm());
+        MPI_Reduce(ei, ei, static_cast<int>(n), etype, my_op, 0, GetComm());
       }
 
       if (GetCommRank() == inspect) {
         std::cout << "after reduce " << GetCommRank() << std::endl;
-        for (int i = 3000; i < 3000; ++i) {
-          std::cout << end_ind[i].u << " " << end_ind[i].v << " " << end_ind[i].w << std::endl;
-        }
       }
 
       bool end_loop = false;
@@ -352,8 +357,10 @@ public:
         U count_relabel = relabel3();
         profile("2.relabel");
 
-        if (GetCommRank() == inspect)
+        if (GetCommRank() == inspect) {
           std::cout << "after relabel " << GetCommRank() << std::endl;
+          std::cout << count_relabel << std::endl;
+        }
 
         if (vertex_left <= count_relabel + 1 or count_relabel == 0) {
           end_loop = true;
@@ -366,8 +373,12 @@ public:
           pointer_jump();
           profile("3.shrink");
 
-          if (GetCommRank() == inspect)
+          if (GetCommRank() == inspect) {
             std::cout << "after shrink " << GetCommRank() << std::endl;
+            for (int i = 0; i < n; ++i) {
+              std::cout << rep[i] << std::endl;
+            }
+          }
         }
       }
 
@@ -377,21 +388,28 @@ public:
       uint32_t *r = rep.data();
       // TODO: remove barrier?
       // MPI_Barrier(GetComm());
+      uint32_t tmp = 0;
       if (end_loop) {
-        r[0] = static_cast<uint32_t >(rep.size());
-        //MPI_Bcast(r, 1, MPI_UINT32_T, 0, GetComm());
+        tmp = r[0];
+        r[0] = static_cast<uint32_t >(n);
+        //MPI_Bcast(r, n, MPI_UINT32_T, 0, GetComm());
       }
 
-      MPI_Bcast(r, static_cast<int>(rep.size()), MPI_UINT32_T, 0, GetComm());
+      MPI_Bcast(r, n, MPI_UINT32_T, 0, GetComm());
 
-      if (GetCommRank() == inspect)
+      if (GetCommRank() == inspect) {
         std::cout << "after Bcast " << GetCommRank() << std::endl;
+        std::cout << "edge_set size: " << edge_set.size() << std::endl;
+      }
 
-      if (r[0] == static_cast<uint32_t >(rep.size())) break;
+      if (end_loop || r[0] == static_cast<uint32_t>(n)) {
+        r[0] = tmp;
+        break;
+      }
 
       std::fill(end_ind.begin(), end_ind.end(), edge_t(0,0,inf));
       profile("5.fill");
-      if (GetCommRank() == 0)
+      if (GetCommRank() == inspect)
         std::cout << "after fill " << GetCommRank() << std::endl;
     }
     if (GetCommRank() == 0) {
@@ -404,6 +422,7 @@ public:
           1000000.
                 << "\n";
       std::cout << edge_set.size() << std::endl;
+      std::cout << output_check() << std::endl;
     }
     // sort edges
 

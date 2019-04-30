@@ -63,7 +63,9 @@ int main( int argc, char *argv[] )
     /** [Step#0] HMLP API call to initialize the runtime. */
     HANDLE_ERROR( hmlp_init( &argc, &argv, CommGOFMM ) );
 
-
+    /** Here neighbors1 is distributed in DistData<STAR, CBLK, T> over CommGOFMM. */
+    int rank; mpi::Comm_rank( CommGOFMM, &rank );
+    int size; mpi::Comm_size( CommGOFMM, &size );
 
     /** [Step#1] Create a configuration for kernel matrices. */
     gofmm::Configuration<T> config2( GEOMETRY_DISTANCE, n, m, k, s, stol, budget );
@@ -76,20 +78,12 @@ int main( int argc, char *argv[] )
     /** [Step#4] Perform the iterative neighbor search. */
     auto neighbors2 = mpigofmm::FindNeighbors( K2, rkdtsplitter2, config2, CommGOFMM );
 
-
-
-    // Distribtued Boruvka
-    hdbscan::Distributed_Boruvka<T, uint32_t > dist_boruvka {neighbors2, CommGOFMM};
-    dist_boruvka.run();
-
-    std::cout << "Boruvka Finished!" << std::endl;
-
+    hdbscan::Distributed_Boruvka<double, uint32_t> dist(neighbors2, CommGOFMM);
+    dist.run();
 
     /** [Step#5] HMLP API call to terminate the runtime. */
     HANDLE_ERROR( hmlp_finalize() );
     /** Finalize Message Passing Interface. */
-
-
     mpi::Finalize();
   }
   catch ( const exception & e )
