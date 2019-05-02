@@ -10,3 +10,6 @@ cmake-build-relwithdebinfo
 .idea
 test/CMakeFiles
 debug.txt
+CMakeFiles
+CMakeLists.txt
+test/CMakeLists.txt
