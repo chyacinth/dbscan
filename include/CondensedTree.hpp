@@ -141,20 +141,10 @@ namespace hdbscan {
 
     void print(bool verbose = false) {
       std::cout << "------------Clustering Result------------" << std::endl;
-      std::cout << "Total cluster number: " << cluster_num_ << std::endl;            
-      int selected_cnt = 0;
-      for (int i = 0; i < cluster_num_; ++i) {
-        if (selected_[i]) {
-          ++selected_cnt;
-          if (verbose) {
-            std::cout << "Cluster id: " << i << std::endl;        
-            for (auto node : clusters_[i].fall_out_nodes) {
-              std::cout << node << " ";
-            }          
-            std::cout << std::endl;
-          }
-        }
-      }
+      std::cout << "Total cluster number: " << cluster_num_ << std::endl;
+
+      int selected_cnt = print_helper(0, verbose);
+
       std::cout << "Selected cluster number: " << selected_cnt << std::endl;
     }
 
@@ -173,6 +163,25 @@ namespace hdbscan {
     int cluster_num_ = 0;
     int minimum_cluster_size_ = 0;
 
+    int print_helper(U cluster_id, bool verbose) {
+      if (cluster_id == -1) {
+        return 0;
+      }
+      if (selected_[cluster_id]) {
+        if (verbose) {
+          std::cout << "Cluster id: " << cluster_id << std::endl;
+          for (auto node : clusters_[cluster_id].fall_out_nodes) {
+            std::cout << node << " ";
+          }
+          std::cout << std::endl;
+        }
+        return 1;
+      } else {
+        int lsize = print_helper(clusters_[cluster_id].left, verbose);
+        int rsize = print_helper(clusters_[cluster_id].right, verbose);
+        return lsize + rsize;
+      }
+    }
     T calc_stability(U cluster_id) {
       T result = 0;
       T lambda_birth = clusters_[cluster_id].lambda_birth;
