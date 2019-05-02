@@ -9,7 +9,8 @@ namespace hdbscan {
   {  
    public:
     CondensedTree(const SingleLinkageTree<T, U> &slt)
-      : clusters_(slt.cluster_num_), minimum_cluster_size_(slt.minimum_cluster_size_) {      
+      : clusters_(slt.cluster_num_), point_nums_(slt.total_nums_),
+      minimum_cluster_size_(slt.minimum_cluster_size_) {
       int root = slt.nodes_.size() - 1;
       //clusters_.emplace_back();
       clusters_[0].lambda_birth = 1 / slt.nodes_[root].distance;
@@ -139,13 +140,20 @@ namespace hdbscan {
       collect_points(clusters_[root].right, result);
     }
 
-    void print(bool verbose = false) {
+    void print(bool verbose = false, bool store = false) {
       std::cout << "------------Clustering Result------------" << std::endl;
       std::cout << "Total cluster number: " << cluster_num_ << std::endl;
+      if (store) {
+        point_cluster_ = std::vector<int>(point_nums_ + 1, -1);
+      }
 
-      int selected_cnt = print_helper(0, verbose);
+      int selected_cnt = print_helper(0, verbose, store);
 
       std::cout << "Selected cluster number: " << selected_cnt << std::endl;
+    }
+
+    std::vector<int> get_point_cluster() {
+      return point_nums_;
     }
 
    private:
@@ -160,10 +168,12 @@ namespace hdbscan {
     };
     std::vector<Node> clusters_;
     std::vector<char> selected_;
+    std::vector<int> point_cluster_;
     int cluster_num_ = 0;
+    int point_nums_ = 0;
     int minimum_cluster_size_ = 0;
 
-    int print_helper(U cluster_id, bool verbose) {
+    int print_helper(U cluster_id, bool verbose, bool store) {
       if (cluster_id == -1) {
         return 0;
       }
@@ -174,6 +184,11 @@ namespace hdbscan {
             std::cout << node << " ";
           }
           std::cout << std::endl;
+        }
+        if (store) {
+          for (auto node : clusters_[cluster_id].fall_out_nodes) {
+            point_cluster_[node] = cluster_id;
+          }
         }
         return 1;
       } else {
