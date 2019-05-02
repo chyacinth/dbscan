@@ -254,8 +254,7 @@ public:
 //  }
 
   inline void pointer_jump() {
-    //par_
-    for (size_t i = 0; i < n; i++) {
+    par_for (size_t i = 0; i < n; i++) {
       int cnt = 0;
       while (rep[i] != rep[rep[i]]) {
         ++cnt;
@@ -340,8 +339,6 @@ public:
 
       edge_t *ei = end_ind.data();
 
-      // TODO: remove barrier?
-      //MPI_Barrier(GetComm());
       if (GetCommRank() == 0) {
         MPI_Reduce(MPI_IN_PLACE, ei, static_cast<int>(n), etype, my_op, 0, GetComm());
       } else {

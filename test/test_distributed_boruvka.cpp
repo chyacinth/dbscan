@@ -26,6 +26,9 @@
 #include <containers/KernelMatrix.hpp>
 /** Use STL and HMLP namespaces. */
 #include "Distributed_boruvka.hpp"
+#include "SingleLinkageTree.hpp"
+#include "CondensedTree.hpp"
+
 
 using namespace std;
 using namespace hmlp;
@@ -45,7 +48,7 @@ int main( int argc, char *argv[] )
     /** Maximum leaf node size (not used in neighbor search). */
     size_t m = 128;
     /** [Required] Number of nearest neighbors. */
-    size_t k = 64;
+    size_t k = 5;
     /** Maximum off-diagonal rank (not used in neighbor search). */
     size_t s = 128;
     /** Approximation tolerance (not used in neighbor search). */
@@ -78,8 +81,14 @@ int main( int argc, char *argv[] )
     /** [Step#4] Perform the iterative neighbor search. */
     auto neighbors2 = mpigofmm::FindNeighbors( K2, rkdtsplitter2, config2, CommGOFMM );
 
-    hdbscan::Distributed_Boruvka<double, uint32_t> dist(neighbors2, CommGOFMM);
-    dist.run();
+    hdbscan::Distributed_Boruvka<double, uint32_t> boruvka(neighbors2, CommGOFMM);
+    boruvka.run();
+
+    if (rank == 0) {
+      hdbscan::SingleLinkageTree<double, uint32_t> slt{boruvka.edge_set, 50};
+      hdbscan::CondensedTree<double, uint32_t> ct{slt};
+      ct.print();
+    }
 
     /** [Step#5] HMLP API call to terminate the runtime. */
     HANDLE_ERROR( hmlp_finalize() );

@@ -1,6 +1,6 @@
 add_definitions("-std=c++11")
 
-# testSingleLinkageTree
+#testSingleLinkageTree
 #add_executable(testSingleLinkageTree test.cpp)
 #target_include_directories(testSingleLinkageTree PRIVATE "${PROJECT_SOURCE_DIR}/include")
 #target_link_libraries(testSingleLinkageTree PUBLIC OpenMP::OpenMP_CXX)

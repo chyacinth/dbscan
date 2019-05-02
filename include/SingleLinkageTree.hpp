@@ -16,17 +16,17 @@ template<typename T, typename U>
   class SingleLinkageTree {
     friend CondensedTree<T, U>;
    public:   
-    SingleLinkageTree(const std::vector<std::tuple<U, U, T>> &mst, int minimum_cluster_size): 
+    SingleLinkageTree(const std::vector<edge_t> &mst, int minimum_cluster_size):
     // first node that has > 0 distance: node_nums_mst_
       nodes_(2 * mst.size() + 1), minimum_cluster_size_(minimum_cluster_size) {
 
       total_nums_ = mst.size() + 1;
       node_nums_mst_ = mst.size() + 1;
       for (auto& edge : mst) {        
-        auto x = std::get<0>(edge);
-        auto y = std::get<1>(edge);
+        auto x = edge.u;
+        auto y = edge.v;
         combine(x, y, total_nums_);
-        nodes_[total_nums_].distance = std::get<2>(edge);
+        nodes_[total_nums_].distance = edge.w;
         ++total_nums_;
       }
     };
@@ -60,7 +60,15 @@ template<typename T, typename U>
       }
     };
     
-   private:    
+   private:
+    struct edge_t {
+      U u;
+      U v;
+      T w;
+     public:
+      edge_t() = default;
+      edge_t(U u_, U v_, T w_) : u(u_), v(v_), w(w_) {};
+    };
     struct Node {
       T distance = 0;
       // TODO: change to pointers maybe?
