@@ -9,7 +9,7 @@ namespace hdbscan {
   {  
    public:
     CondensedTree(const SingleLinkageTree<T, U> &slt)
-      : clusters_(slt.cluster_num_), point_nums_(slt.total_nums_),
+      : clusters_(slt.cluster_num_), point_nums_(slt.node_nums_mst_),
       minimum_cluster_size_(slt.minimum_cluster_size_) {
       int root = slt.nodes_.size() - 1;
       //clusters_.emplace_back();
