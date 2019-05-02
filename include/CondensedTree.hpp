@@ -153,7 +153,7 @@ namespace hdbscan {
     }
 
     std::vector<int> get_point_cluster() {
-      return point_nums_;
+      return point_cluster_;
     }
 
    private:
