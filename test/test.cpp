@@ -14,7 +14,7 @@ int main() {
   try
   {
     using T = float;
-    using U = int;
+    using U = int32_t;
 
     ios::sync_with_stdio(false);
 
@@ -24,7 +24,7 @@ int main() {
     U id2;
     T distance;
     while (file >> id1 >> id2 >> distance) {
-      mst.emplace_back(hdbscan::SingleLinkageTree<T, U>::edge_t(id1, id2, distance));
+      mst.emplace_back(id1, id2, distance);
     }    
 
     //hdbscan::Boruvka<T, U> boruvka{1500};
