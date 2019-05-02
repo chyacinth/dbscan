@@ -1,19 +1,28 @@
 add_definitions("-std=c++11")
 
 #testSingleLinkageTree
-#add_executable(testSingleLinkageTree test.cpp)
-#target_include_directories(testSingleLinkageTree PRIVATE "${PROJECT_SOURCE_DIR}/include")
-#target_link_libraries(testSingleLinkageTree PUBLIC OpenMP::OpenMP_CXX)
-#target_link_libraries(testSingleLinkageTree PUBLIC MPI::MPI_CXX)
-#target_compile_options(testSingleLinkageTree PRIVATE "$<$<CONFIG:Release>:-O3>")
-#target_compile_options(testSingleLinkageTree PRIVATE -Wall -Werror -Wextra -pedantic)
+add_executable(testSingleLinkageTree test.cpp)
+target_include_directories(testSingleLinkageTree PRIVATE "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(testSingleLinkageTree PUBLIC OpenMP::OpenMP_CXX)
+target_link_libraries(testSingleLinkageTree PUBLIC MPI::MPI_CXX)
+target_compile_options(testSingleLinkageTree PRIVATE "$<$<CONFIG:Release>:-O3>")
+target_compile_options(testSingleLinkageTree PRIVATE -Wall -Werror -Wextra -pedantic)
 
 # testBoruvka
-#add_executable(testBoruvka test_boruvka.cpp)
-#target_include_directories(testBoruvka PRIVATE "${PROJECT_SOURCE_DIR}/include")
-#target_link_libraries(testBoruvka PUBLIC OpenMP::OpenMP_CXX PUBLIC atomic)
-#target_link_options(testBoruvka PUBLIC -latomic)
-#target_compile_options(testBoruvka PRIVATE "$<$<CONFIG:Release>:-O3>")
+add_executable(testBoruvka test_boruvka.cpp)
+target_include_directories(testBoruvka PRIVATE "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(testBoruvka PUBLIC OpenMP::OpenMP_CXX)# PUBLIC atomic)
+target_link_options(testBoruvka PUBLIC)# -latomic)
+target_compile_options(testBoruvka PRIVATE "$<$<CONFIG:Release>:-O3>")
+
+add_executable(gen gen.cpp)
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(gen PUBLIC OpenMP::OpenMP_CXX)
+endif()
+target_include_directories(gen PRIVATE "${PROJECT_SOURCE_DIR}/include")
+target_compile_options(gen PRIVATE "$<$<CONFIG:Release>:-O3>")
+target_compile_options(gen PRIVATE -Wall -Werror -Wextra -pedantic)# -Wlifetime)
 
 
 # testDistributedBoruvka

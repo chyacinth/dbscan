@@ -24,30 +24,19 @@
 
 namespace hdbscan {
 
+struct edge_t {
+  uint32_t u;
+  uint32_t v;
+  double w;
+public:
+  edge_t() = default;
+  edge_t(uint32_t u_, uint32_t v_, double w_) : u(u_), v(v_), w(w_) {};
+};
+
 template <typename T, typename U> class Boruvka {
-  struct edge_t {
-    U u;
-    U v;
-    T w;
-    public:
-    edge_t() = default;
-    edge_t(U u_, U v_, T w_) : u(u_), v(v_), w(w_) {};
-  };
+
   constexpr static auto now_time = std::chrono::high_resolution_clock::now;
-  using edge_p = std::pair<double, uint_fast64_t>;
-
-//  inline U argmin(std::vector<edge_t> const &v, const U size) {
-//    auto result = std::min_element(v.begin(), v.begin() + size,
-//                              [](edge_t e1, edge_t e2) { return e1.w < e2.w; });
-//    return distance(v.begin(), result);
-//  }
-
-//  inline std::vector<U> argsort(const std::vector<U> &v, const U size) {
-//    std::vector<U> idx(size);
-//    std::iota(idx.begin(), idx.end(), 0);
-//    std::sort(idx.begin(), idx.end(), [&v](U i1, U i2) { return v[i1] < v[i2]; });
-//    return idx;
-//  }
+  using edge_p = std::pair<T, size_t>;
 
   std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
   inline void reset_clock() { timestamp = now_time(); }
@@ -59,21 +48,17 @@ template <typename T, typename U> class Boruvka {
     timestamp = now_time();
   }
 
-public:
-  T inf = std::numeric_limits<T>::infinity();
-  const U n, m;
-  U vertex_left;
-  std::vector<edge_p> edges;
-  std::vector<edge_t> edge_set;
-  std::vector<U> rep;
-  std::vector<edge_t> end_ind;
-
-  std::map<std::string, double> profiler;
-
   inline T get_weight(std::pair<T, T> const & a, std::pair<T, T> const & b) {
     return std::pow(std::pow(a.first - b.first, 2.) + std::pow(a.second - b.second, 2.), 0.5);
   };
-  Boruvka(U n_, U m_) : n(n_), m(m_), vertex_left(n_) {
+
+  void init() {
+    end_ind = std::vector<edge_t>(n, edge_t(0,0,inf));
+    rep = std::vector<U>(n);
+    std::iota(rep.begin(), rep.end(), 0);
+  }
+
+  void rand_init_edges() {
     edges = std::vector<edge_p>(size_t(n) * m);
     // random_device rd;
     std::mt19937 gen(0);
@@ -95,10 +80,28 @@ public:
         edges[i * m + j] = edge_p(get_weight(points[i], points[g]), g);
       }
     }
+  }
 
-    end_ind = std::vector<edge_t>(n, edge_t(0,0,inf));
-    rep = std::vector<U>(n);
-    std::iota(rep.begin(), rep.end(), 0);
+public:
+  T inf = std::numeric_limits<T>::infinity();
+  const U n, m;
+  U vertex_left;
+  std::vector<edge_p> edges;
+  std::vector<edge_t> edge_set;
+  std::vector<U> rep;
+  std::vector<edge_t> end_ind;
+
+  std::map<std::string, double> profiler;
+
+  Boruvka(U n_, U m_) : n(n_), m(m_), vertex_left(n_) {
+    rand_init_edges();
+    init();
+  }
+
+  Boruvka(U n_, U m_, std::vector<edge_p> & E) : n(n_), m(m_), vertex_left(n_) {
+    assert(n * m == E.size());
+    edges.swap(E);
+    init();
   }
 
   inline void find_min() {
@@ -274,11 +277,23 @@ public:
 
       U count_relabel = relabel3();
       profile("2.relabel");
-      if (vertex_left <= count_relabel + 1 or count_relabel == 0) break;
+      if (vertex_left <= count_relabel + 1) break;
       vertex_left = vertex_left - count_relabel;
 
       pointer_jump();
       profile("3.shrink");
+      if (count_relabel == 0) {
+        std::unordered_set<U> s;
+        s.insert(rep[0]);
+        U last = rep[0];
+        for (size_t i = 1; i < n; i++) {
+          if (s.find(rep[i]) != s.end()) continue;
+          edge_set.push_back(edge_t(last, rep[i], inf));
+          last = rep[i];
+          s.insert(last);
+        }
+        break;
+      }
 
 //      compact();
 //      profile("4.compact");
