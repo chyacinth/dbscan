@@ -192,8 +192,8 @@ namespace hdbscan {
         }
         return 1;
       } else {
-        int lsize = print_helper(clusters_[cluster_id].left, verbose);
-        int rsize = print_helper(clusters_[cluster_id].right, verbose);
+        int lsize = print_helper(clusters_[cluster_id].left, verbose, store);
+        int rsize = print_helper(clusters_[cluster_id].right, verbose, store);
         return lsize + rsize;
       }
     }
