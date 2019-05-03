@@ -17,7 +17,6 @@
 #include <atomic>
 #include <unordered_set>
 
-#define ROUND_UP(x, s) (((x) + ((s)-1)) & -(s))
 #define par_for _Pragma("omp parallel for") for
 #define par_for_256 _Pragma("omp parallel for schedule (static,256)") for
 // #define par_for for
@@ -33,10 +32,11 @@ public:
   edge_t(uint32_t u_, uint32_t v_, double w_) : u(u_), v(v_), w(w_) {};
 };
 
-template <typename T, typename U> class Boruvka {
+using edge_p = std::pair<double, size_t>;
+
+template <typename T=double, typename U=uint32_t> class Boruvka {
 
   constexpr static auto now_time = std::chrono::high_resolution_clock::now;
-  using edge_p = std::pair<T, size_t>;
 
   std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
   inline void reset_clock() { timestamp = now_time(); }
@@ -82,26 +82,11 @@ template <typename T, typename U> class Boruvka {
     }
   }
 
-public:
-  T inf = std::numeric_limits<T>::infinity();
-  const U n, m;
-  U vertex_left;
-  std::vector<edge_p> edges;
-  std::vector<edge_t> edge_set;
-  std::vector<U> rep;
-  std::vector<edge_t> end_ind;
-
-  std::map<std::string, double> profiler;
-
-  Boruvka(U n_, U m_) : n(n_), m(m_), vertex_left(n_) {
-    rand_init_edges();
-    init();
-  }
-
-  Boruvka(U n_, U m_, std::vector<edge_p> & E) : n(n_), m(m_), vertex_left(n_) {
-    assert(n * m == E.size());
-    edges.swap(E);
-    init();
+  inline void pwrite(edge_t & ptr, edge_t const & new_val) {
+    edge_t old_val;
+    do {
+      old_val = ptr;
+    } while (new_val.w < old_val.w and !reinterpret_cast<std::atomic<edge_t>&>(ptr).compare_exchange_strong(old_val, new_val));
   }
 
   inline void find_min() {
@@ -127,22 +112,6 @@ public:
     }
   }
 
-//  inline U relabel() {
-//    U count_relabel = 0;
-//    for (U i = 0; i < n; i++) {
-//      if (end_ind[i].w == inf) continue;
-//      U this_end = rep[i];
-//      U that_end = rep[end_ind[this_end].v];
-//      U third_end = rep[end_ind[that_end].v];
-//      if (third_end != this_end || this_end > that_end) {
-//        rep[this_end] = that_end;
-//        edge_set.push_back(end_ind[this_end]);
-//        count_relabel++;
-//      }
-//    }
-//    return count_relabel;
-//  }
-
   inline U relabel3() {
     U count_relabel = 0;
     for (size_t i = 0; i < n; i++) {
@@ -162,71 +131,33 @@ public:
     return count_relabel;
   }
 
-//  inline U relabel2() {
-//    U count_relabel = 0;
-//    auto new_end_ind = std::vector<edge_t>(n, edge_t(0,0,inf));
-//    for (U i = 0; i < n; i++) {
-//      if (end_ind[i].w == inf) continue;
-//      U u = end_ind[i].u;
-//      new_end_ind[u] = end_ind[i];
-//    }
-//    end_ind = new_end_ind;
-//    for (U i = 0; i < n; i++) {
-//      if (end_ind[i].w == inf) continue;
-//      U this_end_rep = rep[i];
-//      U that_end = end_ind[i].v;
-//      U that_end_rep = rep[that_end];
-//      U third_end_rep = rep[end_ind[that_end].v];
-//      if (third_end_rep != this_end_rep || this_end_rep > that_end_rep) {
-//        rep[this_end_rep] = that_end_rep;
-//        edge_set.push_back(end_ind[i]);
-//        count_relabel++;
-//      }
-//    }
-//    return count_relabel;
-//  }
-
-//  inline void shrink() {
-//    for (U i = 0; i < n; i++) {
-//      U root = i;
-//      while (root != rep[root])
-//        root = rep[root];
-//      U now = i;
-//      U tmp;
-//      while (now != root) {
-//        tmp = rep[now];
-//        rep[now] = root;
-//        now = tmp;
-//      }
-//    }
-//  }
-  
   inline void pointer_jump() {
     par_for (size_t i = 0; i < n; i++)
       while (rep[i] != rep[rep[i]])
         rep[i] = rep[rep[i]];
   }
 
-  inline void pwrite(edge_t & ptr, edge_t const & new_val) {
-    edge_t old_val;
-    do {
-      old_val = ptr;
-    } while (new_val.w < old_val.w and !reinterpret_cast<std::atomic<edge_t>&>(ptr).compare_exchange_strong(old_val, new_val));
+public:
+  T inf = std::numeric_limits<T>::infinity();
+  const U n, m;
+  U vertex_left;
+  std::vector<edge_p> edges;
+  std::vector<edge_t> edge_set;
+  std::vector<U> rep;
+  std::vector<edge_t> end_ind;
+
+  std::map<std::string, double> profiler;
+
+  Boruvka(U n_, U m_) : n(n_), m(m_), vertex_left(n_) {
+    rand_init_edges();
+    init();
   }
 
-//  inline void compact() {
-//    par_for (U i = 0; i < n; i++) {
-//      U ind = 0;
-//      for (U j = 0; j < length[i]; j++) {
-//        if (rep[i] != rep[edges[i][j].v]) {
-////          if (ind != j)
-//          edges[i][ind] = edges[i][j];
-//          ind++;
-//        }
-//      }
-//      length[i] = ind;
-//    }
-//  }
+  Boruvka(U n_, U m_, std::vector<edge_p> & E) : n(n_), m(m_), vertex_left(n_) {
+    assert(n * m == E.size());
+    edges.swap(E);
+    init();
+  }
 
   int output_check() {
     std::vector<U> rep_check(n);
@@ -292,11 +223,9 @@ public:
           last = rep[i];
           s.insert(last);
         }
+        profile("insert_inf");
         break;
       }
-
-//      compact();
-//      profile("4.compact");
 
       std::fill(end_ind.begin(), end_ind.end(), edge_t(0,0,inf));
       profile("5.fill");
@@ -310,9 +239,6 @@ public:
                      1000000.
               << "\n";
     std::cout << edge_set.size() << std::endl;
-    // sort edges
-
-
   }
 };
 } // namespace hdbscan
