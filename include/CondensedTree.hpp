@@ -8,7 +8,7 @@ namespace hdbscan {
   class CondensedTree
   {  
    public:
-    CondensedTree(const SingleLinkageTree<T, U> &slt)
+    explicit CondensedTree(const SingleLinkageTree<T, U> &slt)
       : clusters_(slt.cluster_num_), point_nums_(slt.node_nums_mst_),
       minimum_cluster_size_(slt.minimum_cluster_size_) {
       int root = slt.nodes_.size() - 1;
@@ -121,9 +121,9 @@ namespace hdbscan {
       if (root_node.right != -1) {
         right_stability = update_stability(root_node.right);
       }
-      if (left_stability + right_stability > root_node.stability) {        
+      if (left_stability + right_stability >= root_node.stability) {
         root_node.stability = left_stability + right_stability;
-      } else {
+      } else if (root_id != 0) {
         selected_[root_node.left] = false;
         selected_[root_node.right] = false;
         selected_[root_id] = true;

@@ -29,7 +29,7 @@ template<typename T, typename U>
       nodes_(2 * mst.size() + 1), minimum_cluster_size_(minimum_cluster_size) {
 
       total_nums_ = mst.size() + 1;
-      node_nums_mst_ = mst.size() + 1;
+      node_n  ums_mst_ = mst.size() + 1;
       for (auto& edge : mst) {        
         auto x = edge.u;
         auto y = edge.v;
@@ -87,8 +87,12 @@ template<typename T, typename U>
     int cluster_num_ = 0;
 
     U find(U x, int id) {
-      while (nodes_[x].rep >= 0) {
-        U rep = find(nodes_[x].rep, id);
+      while (nodes_[x].rep >= 0 || nodes_[x].parent >= 0) {
+        U rep = 0;
+        if (nodes_[x].rep >= 0)
+          rep = find(nodes_[x].rep, id);
+        else
+          rep = find(nodes_[x].parent, id);
         nodes_[x].rep = id;
         return rep;
       }

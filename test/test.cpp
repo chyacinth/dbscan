@@ -13,12 +13,12 @@ using namespace std::chrono;
 int main() {
   try
   {
-    using T = float;
+    using T = double;
     using U = int32_t;
 
     ios::sync_with_stdio(false);
 
-    ifstream file("/Users/hyacinth/workspace/dbscan/data/1000.txt");
+    ifstream file("/Users/hyacinth/workspace/dbscan/data/lib1000.txt");
     vector<hdbscan::SingleLinkageTree<T, U >::edge_t> mst{};
     U id1;
     U id2;
@@ -29,7 +29,7 @@ int main() {
 
     //hdbscan::Boruvka<T, U> boruvka{1500};
     auto start = high_resolution_clock::now();
-    hdbscan::SingleLinkageTree<T, U> slt{mst, 30};
+    hdbscan::SingleLinkageTree<T, U> slt{mst, 10};
     hdbscan::CondensedTree<T, U> ct{slt};
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);     
