@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "DistData.hpp"
+#include "Boruvka.hpp"
 
 #define ROUND_UP(x, s) (((x) + ((s)-1)) & -(s))
 #define par_for _Pragma("omp parallel for") for
@@ -26,15 +27,6 @@
 
 
 namespace hdbscan {
-
-struct edge_t {
-  uint32_t u;
-  uint32_t v;
-  double w;
- public:
-  edge_t() = default;
-  edge_t(uint32_t u_, uint32_t v_, double w_) : u(u_), v(v_), w(w_) {};
-};
 
 void my_prod(void *in_, void *inout_, int *len, MPI_Datatype *dptr) {
   edge_t *in = static_cast<edge_t*>(in_);
@@ -87,7 +79,7 @@ public:
   DistData<STAR, CBLK, pair<T, size_t>>& edges;
 
   std::vector<edge_t> edge_set;
-  std::vector<uint32_t > rep;
+  std::vector<int32_t > rep;
   std::vector<edge_t> end_ind;
   MPI_Datatype etype;
   MPI_Op my_op;
@@ -105,10 +97,10 @@ public:
     size_t edge_n = n % GetCommSize();
     local_n = ( n - edge_n ) / GetCommSize();
     edges2 = std::vector<edge_p>(size_t(local_n) * m);
-    random_device rd;
-    std::mt19937 gen(56419847);
-    std::uniform_real_distribution<T> pos_gen(0.0, 1000.0);
-    std::uniform_int_distribution<U> id_gen(0, n-1);
+    //random_device rd;
+    //std::mt19937 gen(56419847);
+    //std::uniform_real_distribution<T> pos_gen(0.0, 1000.0);
+    //std::uniform_int_distribution<U> id_gen(0, n-1);
 
     /*
     // random initialization
@@ -146,7 +138,7 @@ public:
 
     int block_length[3] = {1, 1, 1};
     MPI_Aint displacements[3] = {offsetof(edge_t, u), offsetof(edge_t, v), offsetof(edge_t, w)};
-    MPI_Datatype types[3] = {MPI_UINT32_T, MPI_UINT32_T, MPI_DOUBLE};
+    MPI_Datatype types[3] = {MPI_INT32_T, MPI_INT32_T, MPI_DOUBLE};
     MPI_Type_create_struct(3, block_length, displacements, types, &etype);
     MPI_Type_commit(&etype);
     MPI_Op_create(my_prod, 0, &my_op);
@@ -382,24 +374,24 @@ public:
 //      compact();
 //      profile("4.compact");
 
-      uint32_t *r = rep.data();
+      int32_t *r = rep.data();
       // TODO: remove barrier?
       // MPI_Barrier(GetComm());
-      uint32_t tmp = 0;
+      int32_t tmp = 0;
       if (end_loop) {
         tmp = r[0];
-        r[0] = static_cast<uint32_t >(n);
-        //MPI_Bcast(r, n, MPI_UINT32_T, 0, GetComm());
+        r[0] = static_cast<int32_t >(n);
+        //MPI_Bcast(r, n, MPI_INT32_T, 0, GetComm());
       }
 
-      MPI_Bcast(r, n, MPI_UINT32_T, 0, GetComm());
+      MPI_Bcast(r, n, MPI_INT32_T, 0, GetComm());
 
       if (GetCommRank() == inspect) {
         std::cout << "after Bcast " << GetCommRank() << std::endl;
         std::cout << "edge_set size: " << edge_set.size() << std::endl;
       }
 
-      if (end_loop || r[0] == static_cast<uint32_t>(n)) {
+      if (end_loop || r[0] == static_cast<int32_t>(n)) {
         r[0] = tmp;
         break;
       }

@@ -45,11 +45,6 @@ template<typename T, typename U>
     }
     
     void print() {
-      std::cout << "Parents: " << std::endl;
-      for (decltype(nodes_.size()) i = 0; i < nodes_.size(); ++i) {
-        std::cout << i << "->" << nodes_[i].parent << std::endl;
-      }
-
       std::cout << "Representatives: " << std::endl;
       for (decltype(nodes_.size()) i = 0; i < nodes_.size(); ++i) {
         std::cout << i << "->" << nodes_[i].rep << std::endl;
@@ -66,8 +61,6 @@ template<typename T, typename U>
       T distance = 0;
       // TODO: change to pointers maybe?
       U left = -1;
-      U right = -1;
-      U parent = -1;
 
       int rep = -1;
       int size = 1;
@@ -80,7 +73,12 @@ template<typename T, typename U>
     int cluster_num_ = 0;
 
     U find(U x, int id) {
-      while (nodes_[x].rep >= 0 || nodes_[x].parent >= 0) {
+      U rep = x;
+      if (nodes_[x].rep >= 0)
+        rep = find(nodes_[x].rep, id);
+      nodes_[x].rep = id;
+      return rep;
+      /*while (nodes_[x].rep >= 0 || nodes_[x].parent >= 0) {
         U rep = 0;
         if (nodes_[x].rep >= 0)
           rep = find(nodes_[x].rep, id);
@@ -88,7 +86,7 @@ template<typename T, typename U>
           rep = find(nodes_[x].parent, id);
         nodes_[x].rep = id;
         return rep;
-      }
+      }*/
       return x;
     };
 
@@ -97,8 +95,8 @@ template<typename T, typename U>
       U ry = find(y, id);
       nodes_[rx].rep = id;
       nodes_[ry].rep = id;
-      nodes_[rx].parent = id;
-      nodes_[ry].parent = id;
+      //nodes_[rx].parent = id;
+      //nodes_[ry].parent = id;
       nodes_[id].size = nodes_[rx].size + nodes_[ry].size;
       if (nodes_[id].size >= minimum_cluster_size_) {
         if ((nodes_[rx].size >= minimum_cluster_size_ && nodes_[ry].size >= minimum_cluster_size_) || 

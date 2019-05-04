@@ -19,7 +19,7 @@ int main() {
     ios::sync_with_stdio(false);
 
     ifstream file("/Users/hyacinth/workspace/dbscan/data/lib1000.txt");
-    vector<hdbscan::SingleLinkageTree<T, U >::edge_t> mst{};
+    vector<hdbscan::edge_t> mst{};
     U id1;
     U id2;
     T distance;
