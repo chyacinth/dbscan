@@ -105,15 +105,20 @@ namespace hdbscan {
       selected_ = std::vector<char>(cluster_num_);
       update_stability(0);
       select_helper(0);
+      collect__helper(0);
 
+//#pragma omp parallel for
       for (U i = 0; i < cluster_num_; ++i) {
         if (selected_[i]) {
           int left_result_size = (clusters_[i].left == -1)? 0 : clusters_[clusters_[i].left].result_size;
           clusters_[i].fall_out_nodes.resize(clusters_[i].result_size + 1);
+#pragma omp task
           collect_points2(clusters_[i].left, clusters_[i].fall_out_nodes.data());
+#pragma omp task
           collect_points2(clusters_[i].right, clusters_[i].fall_out_nodes.data() + left_result_size);
         }        
       }
+#pragma omp taskwait
     }
 
     T update_stability(U root_id) {
@@ -166,9 +171,11 @@ namespace hdbscan {
       }
 
       int left_result_size = (clusters_[root].left == -1)? 0 : clusters_[clusters_[root].left].result_size;
-
+//#pragma omp task
       collect_points2(clusters_[root].left, result);
+//#pragma omp task
       collect_points2(clusters_[root].right, result + left_result_size);
+//#pragma omp taskwait
     }
 
     void collect_points(U root, std::vector<U>& result) {
