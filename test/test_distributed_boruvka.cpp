@@ -288,8 +288,8 @@ int main( int argc, char *argv[] )
     //cout << "boruvka ends" << endl;
 
     if (rank == 0) {
-      cout << boruvka.edge_set.size() << endl;
-      cout << "edge_set: " << endl;
+      //cout << boruvka.edge_set.size() << endl;
+      //cout << "edge_set: " << endl;
       size_t edge_size = boruvka.edge_set.size();
       #pragma omp parallel for
       for (int i = 0; i < edge_size; ++i) {

@@ -104,11 +104,14 @@ namespace hdbscan {
     void extract_clusters() {
       selected_ = std::vector<char>(cluster_num_);
       update_stability(0);
-      
+      select_helper(0);
+
       for (U i = 0; i < cluster_num_; ++i) {
         if (selected_[i]) {
-          collect_points(clusters_[i].left, clusters_[i].fall_out_nodes);
-          collect_points(clusters_[i].right, clusters_[i].fall_out_nodes);
+          int left_result_size = (clusters_[i].left == -1)? 0 : clusters_[clusters_[i].left].result_size;
+          clusters_[i].fall_out_nodes.resize(clusters_[i].result_size + 1);
+          collect_points2(clusters_[i].left, clusters_[i].fall_out_nodes.data());
+          collect_points2(clusters_[i].right, clusters_[i].fall_out_nodes.data() + left_result_size);
         }        
       }
     }
@@ -141,7 +144,33 @@ namespace hdbscan {
       //std::cout << root_id << "' s stability is: " << root_node.stability << std::endl;
       return root_node.stability;
     }
-    
+
+    int collect__helper(U root) {
+      if (root == -1) return 0;
+      int lsize = 0;
+      int rsize = 0;
+#pragma omp task shared(lsize)
+      lsize = collect__helper(clusters_[root].left);
+#pragma omp task shared(rsize)
+      rsize = collect__helper(clusters_[root].right);
+#pragma omp taskwait
+      clusters_[root].result_size = clusters_[root].fall_out_nodes.size() + lsize + rsize;
+      return clusters_[root].result_size;
+    }
+
+    void collect_points2(U root, U* result) {
+      if (root == -1) return;
+      for (auto i : clusters_[root].fall_out_nodes) {
+        *result = i;
+        ++result;
+      }
+
+      int left_result_size = (clusters_[root].left == -1)? 0 : clusters_[clusters_[root].left].result_size;
+
+      collect_points2(clusters_[root].left, result);
+      collect_points2(clusters_[root].right, result + left_result_size);
+    }
+
     void collect_points(U root, std::vector<U>& result) {
       if (root == -1) return;
       for (auto i : clusters_[root].fall_out_nodes) {
@@ -176,6 +205,7 @@ namespace hdbscan {
       T stability = 0;
       T lambda_birth = 0;
       int remaining_nodes_num = 0;
+      int result_size = 0;
     };
     std::vector<Node> clusters_;
     std::vector<char> selected_;
@@ -183,6 +213,26 @@ namespace hdbscan {
     int cluster_num_ = 0;
     int point_nums_ = 0;
     int minimum_cluster_size_ = 0;
+
+
+    int select_helper(U cluster_id) {
+      if (cluster_id == -1) {
+        return 0;
+      }
+      if (selected_[cluster_id]) {
+        return 1;
+      } else {
+        int lsize = 0;
+#pragma omp task shared(lsize)
+        lsize = select_helper(clusters_[cluster_id].left);
+        int rsize = 0;
+#pragma omp task shared(rsize)
+        rsize = select_helper(clusters_[cluster_id].right);
+#pragma omp taskwait
+        return lsize + rsize;
+      }
+    }
+
 
     int print_helper(U cluster_id, bool verbose, bool store) {
       if (cluster_id == -1) {
