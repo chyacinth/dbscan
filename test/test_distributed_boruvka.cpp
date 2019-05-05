@@ -72,13 +72,13 @@ int main( int argc, char *argv[] )
 
     /** Use float as data type. */
     using T = double;
-    size_t core_k = 10;
+    size_t core_k = 20;
     /** [Required] Problem size. */
-    size_t n = 2000;
+    size_t n = 1000000;
     /** Maximum leaf node size (not used in neighbor search). */
     size_t m = 128;
     /** [Required] Number of nearest neighbors. */
-    size_t k = 11;
+    size_t k = 40;
     /** Maximum off-diagonal rank (not used in neighbor search). */
     size_t s = 128;
     /** Approximation tolerance (not used in neighbor search). */
@@ -104,9 +104,10 @@ int main( int argc, char *argv[] )
     /** [Step#1] Create a configuration for kernel matrices. */
     gofmm::Configuration<T> config2( GEOMETRY_DISTANCE, n, m, k, s, stol, budget );
     /** [Step#2] Create a distributed Gaussian kernel matrix with random 6D data. */
-    DistData<STAR, CBLK, T> X( DIMENSION, n, CommGOFMM ); //X.randn();
+    DistData<STAR, CBLK, T> X( DIMENSION, n, CommGOFMM );
+    X.randn();
 
-    fstream file("/home/parallels/workspace/dbscan/data/2000input.txt");
+    /*fstream file("/home1/05820/xychen/xychen/dbscan/data/2000input.txt");
     double x = 0;
     double y = 0;
     int cnt = 0;
@@ -118,7 +119,7 @@ int main( int argc, char *argv[] )
       }
       ++cnt;
     }
-    //cout << "cnt == " << cnt << endl;
+    //cout << "cnt == " << cnt << endl;*/
 
 
 
@@ -295,11 +296,17 @@ int main( int argc, char *argv[] )
       for (int i = 0; i < edge_size; ++i) {
         boruvka.edge_set[i].w = sqrt(boruvka.edge_set[i].w);
       }
-      hdbscan::SingleLinkageTree<double, int32_t> slt{boruvka.edge_set, 10};
+      cout << "start slt" << endl;
+      hdbscan::SingleLinkageTree<double, int32_t> slt{boruvka.edge_set, core_k};
+      cout << "end slt" << endl;
+      cout << "slt.cluster_num_ " << slt.cluster_num_ << endl;
+      cout << "start condense" << endl;
       hdbscan::CondensedTree<double, int32_t> ct{slt};
+      cout << "end condense" << endl;
       ct.print();
+      cout << "end print" << endl;
     }
-
+    MPI_Barrier(CommGOFMM);
     /** [Step#5] HMLP API call to terminate the runtime. */
     HANDLE_ERROR( hmlp_finalize() );
     /** Finalize Message Passing Interface. */

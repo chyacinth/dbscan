@@ -56,7 +56,7 @@ template<typename T, typename U>
       }
     };
     
-   private:
+   public:
     struct Node {
       T distance = 0;
       // TODO: change to pointers maybe?

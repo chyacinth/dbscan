@@ -18,8 +18,13 @@ namespace hdbscan {
 #pragma omp parallel
 #pragma omp single
       {
+        //std::cout << "start build" << endl;
+        //std::cout << "cluster_num_: " << slt.cluster_num_ << std::endl;
         build(slt, root, cluster_num_++);
+        //std::cout << "end build" << endl;
+        //std::cout << "start extract" << endl;
         extract_clusters();
+        //std::cout << "end extract" << endl;
       }
     }
     void build(const SingleLinkageTree<T, U> &slt, const U root, const U cluster_id) {
@@ -28,7 +33,14 @@ namespace hdbscan {
       bool keep_right = false;      
       const int left_size = slt.nodes_[node.left].size;
       const int right_size = slt.nodes_[node.right].size;
-
+      //std::cout << "root_id: " << root << std::endl;
+      //std::cout << "node.left: " << node.left << std::endl;      
+      //std::cout << "node.right: " << node.right << std::endl;      
+      if (cluster_id > clusters_.size() - 1) {
+        std::cout << "cluster_id: " << cluster_id << std::endl;
+        std::cout << "clusters_.size(): " << clusters_.size() << std::endl;
+        std::cout << "wtf" << std::endl;
+      }
       if (node.left != -1 && left_size >= minimum_cluster_size_) {
         keep_left = true;
       }
@@ -79,46 +91,39 @@ namespace hdbscan {
         clusters_[cluster_id].remaining_nodes_num = 0;
         clusters_[cluster_id].lambda_birth = 1 / node.distance;
 
-#pragma omp task shared(slt)
+//#pragma omp task
           build(slt, node.left, left_cluster);
-#pragma omp task shared(slt)
+//#pragma omp task
           build(slt, node.right, right_cluster);
-#pragma omp taskwait
-
-
-
-        /*for (auto node_lam : clusters_[left_cluster].fall_out_nodes) {
-          clusters_[cluster_id].fall_out_nodes.emplace_back(node_lam.first, 1 / node.distance);
-        }
-        for (auto node_lam : clusters_[right_cluster].fall_out_nodes) {
-          clusters_[cluster_id].fall_out_nodes.emplace_back(node_lam.first, 1 / node.distance);
-        }*/
+//#pragma omp taskwait
       }
-
-      /*if (!keep_left && !keep_right) {
-        slt.get_leaves(root, clusters_[cluster_id].fall_out_nodes);
-      }*/
-
     }
 
     void extract_clusters() {
       selected_ = std::vector<char>(cluster_num_);
+      //std::cout << "start 1" << std::endl;
       update_stability(0);
-      select_helper(0);
-      collect__helper(0);
-
+      //std::cout << "start 2" << std::endl;
+      selected_cnt_ = select_helper(0);
+      //std::cout << "start 3" << std::endl;
+      collect_helper(0);
+      //std::cout << "start 4" << std::endl;
 //#pragma omp parallel for
       for (U i = 0; i < cluster_num_; ++i) {
         if (selected_[i]) {
           int left_result_size = (clusters_[i].left == -1)? 0 : clusters_[clusters_[i].left].result_size;
+          int ori_size = clusters_[i].fall_out_nodes.size();
           clusters_[i].fall_out_nodes.resize(clusters_[i].result_size + 1);
+          //clusters_[i].fall_out_nodes.resize(clusters_[i].result_size * 10);
 #pragma omp task
-          collect_points2(clusters_[i].left, clusters_[i].fall_out_nodes.data());
+          collect_points2(clusters_[i].left, clusters_[i].fall_out_nodes.data() + ori_size);
 #pragma omp task
-          collect_points2(clusters_[i].right, clusters_[i].fall_out_nodes.data() + left_result_size);
+          collect_points2(clusters_[i].right, clusters_[i].fall_out_nodes.data() + ori_size + left_result_size);
+#pragma omp taskwait
         }        
       }
-#pragma omp taskwait
+      //std::cout << "start 5" << std::endl;
+
     }
 
     T update_stability(U root_id) {
@@ -150,14 +155,14 @@ namespace hdbscan {
       return root_node.stability;
     }
 
-    int collect__helper(U root) {
+    int collect_helper(U root) {
       if (root == -1) return 0;
       int lsize = 0;
       int rsize = 0;
 #pragma omp task shared(lsize)
-      lsize = collect__helper(clusters_[root].left);
+      lsize = collect_helper(clusters_[root].left);
 #pragma omp task shared(rsize)
-      rsize = collect__helper(clusters_[root].right);
+      rsize = collect_helper(clusters_[root].right);
 #pragma omp taskwait
       clusters_[root].result_size = clusters_[root].fall_out_nodes.size() + lsize + rsize;
       return clusters_[root].result_size;
@@ -171,11 +176,11 @@ namespace hdbscan {
       }
 
       int left_result_size = (clusters_[root].left == -1)? 0 : clusters_[clusters_[root].left].result_size;
-//#pragma omp task
+#pragma omp task
       collect_points2(clusters_[root].left, result);
-//#pragma omp task
+#pragma omp task
       collect_points2(clusters_[root].right, result + left_result_size);
-//#pragma omp taskwait
+#pragma omp taskwait
     }
 
     void collect_points(U root, std::vector<U>& result) {
@@ -194,9 +199,9 @@ namespace hdbscan {
         point_cluster_ = std::vector<int>(point_nums_ + 1, -1);
       }
 
-      int selected_cnt = print_helper(0, verbose, store);
+      print_helper(0, verbose, store);
 
-      std::cout << "Selected cluster number: " << selected_cnt << std::endl;
+      std::cout << "Selected cluster number: " << selected_cnt_ << std::endl;
     }
 
     std::vector<int> get_point_cluster() {
@@ -220,6 +225,7 @@ namespace hdbscan {
     int cluster_num_ = 0;
     int point_nums_ = 0;
     int minimum_cluster_size_ = 0;
+    int selected_cnt_ = 0;
 
 
     int select_helper(U cluster_id) {
@@ -241,9 +247,9 @@ namespace hdbscan {
     }
 
 
-    int print_helper(U cluster_id, bool verbose, bool store) {
+    void print_helper(U cluster_id, bool verbose, bool store) {
       if (cluster_id == -1) {
-        return 0;
+        return;
       }
       if (selected_[cluster_id]) {
         if (verbose) {
@@ -258,11 +264,10 @@ namespace hdbscan {
             point_cluster_[node] = cluster_id;
           }
         }
-        return 1;
+        return;
       } else {
-        int lsize = print_helper(clusters_[cluster_id].left, verbose, store);
-        int rsize = print_helper(clusters_[cluster_id].right, verbose, store);
-        return lsize + rsize;
+        print_helper(clusters_[cluster_id].left, verbose, store);
+        print_helper(clusters_[cluster_id].right, verbose, store);
       }
     }
     T calc_stability(U cluster_id) {
