@@ -15,8 +15,12 @@ namespace hdbscan {
       //clusters_.emplace_back();
       clusters_[0].lambda_birth = 1 / slt.nodes_[root].distance;
       clusters_[0].remaining_nodes_num = slt.nodes_[root].size;
-      build(slt, root, cluster_num_++);
-      extract_clusters();
+#pragma omp parallel
+#pragma omp single
+      {
+        build(slt, root, cluster_num_++);
+        extract_clusters();
+      }
     }
     void build(const SingleLinkageTree<T, U> &slt, const U root, const U cluster_id) {
       const auto& node = slt.nodes_[root];
@@ -75,8 +79,13 @@ namespace hdbscan {
         clusters_[cluster_id].remaining_nodes_num = 0;
         clusters_[cluster_id].lambda_birth = 1 / node.distance;
 
-        build(slt, node.left, left_cluster);
-        build(slt, node.right, right_cluster);
+#pragma omp task shared(slt)
+          build(slt, node.left, left_cluster);
+#pragma omp task shared(slt)
+          build(slt, node.right, right_cluster);
+#pragma omp taskwait
+
+
 
         /*for (auto node_lam : clusters_[left_cluster].fall_out_nodes) {
           clusters_[cluster_id].fall_out_nodes.emplace_back(node_lam.first, 1 / node.distance);
@@ -94,7 +103,6 @@ namespace hdbscan {
 
     void extract_clusters() {
       selected_ = std::vector<char>(cluster_num_);
-
       update_stability(0);
       
       for (U i = 0; i < cluster_num_; ++i) {
@@ -106,6 +114,7 @@ namespace hdbscan {
     }
 
     T update_stability(U root_id) {
+      if (root_id == -1) return 0;
       auto& root_node = clusters_[root_id];
       // leaf node, just return
       if (root_node.left == -1 && root_node.right == -1) {
@@ -114,13 +123,14 @@ namespace hdbscan {
       }
       // get left and right stability
       T left_stability = 0;
-      if (root_node.left != -1) {
-        left_stability = update_stability(root_node.left);
-      }
       T right_stability = 0;
-      if (root_node.right != -1) {
-        right_stability = update_stability(root_node.right);
-      }
+#pragma omp task shared(left_stability)
+        left_stability = update_stability(root_node.left);
+
+#pragma omp task shared(right_stability)
+      right_stability = update_stability(root_node.right);
+
+#pragma omp taskwait
       if (left_stability + right_stability >= root_node.stability) {
         root_node.stability = left_stability + right_stability;
       } else if (root_id != 0) {
@@ -128,6 +138,7 @@ namespace hdbscan {
         selected_[root_node.right] = false;
         selected_[root_id] = true;
       }
+      //std::cout << root_id << "' s stability is: " << root_node.stability << std::endl;
       return root_node.stability;
     }
     

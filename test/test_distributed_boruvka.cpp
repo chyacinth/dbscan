@@ -67,6 +67,9 @@ int main( int argc, char *argv[] )
 {
   try
   {
+    omp_set_dynamic(0);     // Explicitly disable dynamic teams
+    omp_set_num_threads(4); // Use 4 threads for all consecutive parallel regions
+
     /** Use float as data type. */
     using T = double;
     size_t core_k = 10;
@@ -125,6 +128,8 @@ int main( int argc, char *argv[] )
     /** [Step#4] Perform the iterative neighbor search. */
     auto neighbors2 = mpigofmm::FindNeighbors( K2, rkdtsplitter2, config2, CommGOFMM );
     size_t row = neighbors2.row_owned();
+    size_t col_owned = neighbors2.col_owned();
+    size_t row_owned = neighbors2.row_owned();
 
     /*for (size_t j = 0; j < neighbors2.col_owned(); ++j) {
       for (size_t i = 0; i < neighbors2.row_owned(); ++i) {
@@ -165,7 +170,7 @@ int main( int argc, char *argv[] )
 
     vector<pr> data_send (neighbors2.col_owned());
     #pragma omp parallel for
-    for (size_t i = 0; i < data_send.size(); ++i) {
+    for (size_t i = 0; i < col_owned; ++i) {
       size_t actual_i = rank + i * size;
       data_send[i].first = neighbors2(core_k, actual_i).first;
       data_send[i].second = neighbors2(core_k, actual_i).second;
@@ -258,8 +263,6 @@ int main( int argc, char *argv[] )
     --row;
 
     vector<double> tc(DIMENSION);
-    size_t col_owned = neighbors2.col_owned();
-    size_t row_owned = neighbors2.row_owned();
     #pragma omp parallel for collapse(2)
     for (size_t j = 0; j < col_owned; ++j) {
       for (size_t i = 1; i < row_owned; ++i) {
@@ -287,8 +290,9 @@ int main( int argc, char *argv[] )
     if (rank == 0) {
       cout << boruvka.edge_set.size() << endl;
       cout << "edge_set: " << endl;
+      size_t edge_size = boruvka.edge_set.size();
       #pragma omp parallel for
-      for (int i = 0; i < boruvka.edge_set.size(); ++i) {
+      for (int i = 0; i < edge_size; ++i) {
         boruvka.edge_set[i].w = sqrt(boruvka.edge_set[i].w);
       }
       hdbscan::SingleLinkageTree<double, int32_t> slt{boruvka.edge_set, 10};

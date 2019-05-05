@@ -61,6 +61,7 @@ template<typename T, typename U>
       T distance = 0;
       // TODO: change to pointers maybe?
       U left = -1;
+      U right = -1;
 
       int rep = -1;
       int size = 1;
