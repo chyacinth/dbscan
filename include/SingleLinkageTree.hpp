@@ -75,7 +75,8 @@ template<typename T, typename U>
 
     U find(U x, int id) {
       U rep = x;
-      if (nodes_[x].rep >= 0)
+      //std::cout << "x is: " << x << std::endl;
+      if (nodes_[x].rep >= 0)// && nodes_[x].rep != x)
         rep = find(nodes_[x].rep, id);
       nodes_[x].rep = id;
       return rep;
@@ -88,7 +89,7 @@ template<typename T, typename U>
         nodes_[x].rep = id;
         return rep;
       }*/
-      return x;
+
     };
 
     void combine(U x, U y, int id) {

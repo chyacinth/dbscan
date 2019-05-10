@@ -145,28 +145,35 @@ public:
   }
 
   inline void find_min() {
-    par_for (size_t k = 0; k < local_n; k++) {
-      size_t i = GetCommRank() + k * GetCommSize();
+    auto rank = GetCommRank();
+    auto comm_size = GetCommSize();
+    auto edt = edges.data();
+    par_for (size_t k = 0; k < local_n; k++) {      
+      //size_t i = rank + k * comm_size;
+      size_t i = k;
       U min_i = 0;
       T min_w = inf;
       for (size_t j = 0; j < m; j++) {
-        //U v2 = edges2[i * m + j].second;
-        U v = edges(j, i).second;
+        U v = edt[i * m + j].second;
+        //U v = edges(j, i).second;
         if (rep[i] == rep[v]) continue;
-        //T w2 = edges2[i * m + j].first;
-        T w = edges(j, i).first;
+        T w = edt[i * m + j].first;
+        //T w = edges(j, i).first;
         if (w < min_w) {
           min_i = j;
           min_w = w;
-        }
+        }        
         if (w < end_ind[rep[v]].w) {
-          pwrite(end_ind[rep[v]], edge_t(static_cast<U>(i), v, w));
+          pwrite2(end_ind[rep[v]], edge_t(static_cast<U>(i), v, w));
+          //end_ind[rep[v]] = edge_t(static_cast<U>(i), v, w);
         }
       }
+      auto &ei = end_ind[rep[i]];
       if (min_w < inf) {
-        //auto const & e = edges2[i * m + min_i];
-        auto const & e = edges(min_i, i);
-        pwrite(end_ind[rep[i]], edge_t(U(i), static_cast<U>(e.second), e.first));
+        auto const & e = edt[i * m + min_i];        
+        //auto const & e = edges(min_i, i);
+        //end_ind[rep[i]] = edge_t(U(i), static_cast<U>(e.second), e.first);
+        pwrite2(end_ind[rep[i]], edge_t(U(i), static_cast<U>(e.second), e.first));
       }
     }
   }
@@ -246,15 +253,16 @@ public:
 //  }
 
   inline void pointer_jump() {
-    par_for (size_t i = 0; i < n; i++) {
-      int cnt = 0;
+    par_for (size_t i = 0; i < n; i++) {      
       while (rep[i] != rep[rep[i]]) {
-        ++cnt;
         rep[i] = rep[rep[i]];
       }
-
     }
+  }
 
+  inline void pwrite2(edge_t & ptr, edge_t const & new_val) {
+    if (new_val.w < ptr.w)
+      ptr = new_val;
   }
 
   inline void pwrite(edge_t & ptr, edge_t const & new_val) {
@@ -318,55 +326,47 @@ public:
   }
 
   void run() {
+    auto rank = GetCommRank();
+    auto comm = GetComm();
     int inspect = GetCommSize() + 1;
     auto start = now_time();
     reset_clock();
+    //std::cout << "local_n is: " << local_n << std::endl;
     while (true) {
       find_min();
       profile("1.find_min");
-
-      if (GetCommRank() == inspect) {
-        std::cout << "after find_min " << GetCommRank() << std::endl;
-      }
-
       edge_t *ei = end_ind.data();
 
-      if (GetCommRank() == 0) {
-        MPI_Reduce(MPI_IN_PLACE, ei, static_cast<int>(n), etype, my_op, 0, GetComm());
+      if (rank == 0) {
+        MPI_Reduce(MPI_IN_PLACE, ei, static_cast<int>(n), etype, my_op, 0, comm);
       } else {
-        MPI_Reduce(ei, ei, static_cast<int>(n), etype, my_op, 0, GetComm());
+        MPI_Reduce(ei, ei, static_cast<int>(n), etype, my_op, 0, comm);
       }
 
-      if (GetCommRank() == inspect) {
-        std::cout << "after reduce " << GetCommRank() << std::endl;
-      }
-
-      bool end_loop = false;
-      if (GetCommRank() == 0) {
+      int32_t end_loop = 0;
+      if (rank == 0) {
         U count_relabel = relabel3();
         profile("2.relabel");
-
-        if (GetCommRank() == inspect) {
-          std::cout << "after relabel " << GetCommRank() << std::endl;
-          std::cout << count_relabel << std::endl;
-        }
-
-        if (vertex_left <= count_relabel + 1 or count_relabel == 0) {
-          end_loop = true;
+// or count_relabel == 0)
+        if (vertex_left <= count_relabel + 1) {
+          end_loop = 1;
         } else {
           vertex_left = vertex_left - count_relabel;
-
-          if (GetCommRank() == inspect)
-            std::cout << "before shrink " << GetCommRank() << std::endl;
-
           pointer_jump();
-          profile("3.shrink");
+          profile("3.shrink");        
 
-          if (GetCommRank() == inspect) {
-            std::cout << "after shrink " << GetCommRank() << std::endl;
-            for (int i = 0; i < n; ++i) {
-              std::cout << rep[i] << std::endl;
+          if (count_relabel == 0) {
+            std::unordered_set<U> s;
+            s.insert(rep[0]);
+            U last = rep[0];
+            for (size_t i = 1; i < n; i++) {
+              if (s.find(rep[i]) != s.end()) continue;
+              edge_set.push_back(edge_t(last, rep[i], inf));
+              last = rep[i];
+              s.insert(last);            
             }
+            profile("insert_inf");
+            end_loop = true;
           }
         }
       }
@@ -374,34 +374,15 @@ public:
 //      compact();
 //      profile("4.compact");
 
-      int32_t *r = rep.data();
-      // TODO: remove barrier?
-      // MPI_Barrier(GetComm());
-      int32_t tmp = 0;
-      if (end_loop) {
-        tmp = r[0];
-        r[0] = static_cast<int32_t >(n);
-        //MPI_Bcast(r, n, MPI_INT32_T, 0, GetComm());
-      }
-
-      MPI_Bcast(r, n, MPI_INT32_T, 0, GetComm());
-
-      if (GetCommRank() == inspect) {
-        std::cout << "after Bcast " << GetCommRank() << std::endl;
-        std::cout << "edge_set size: " << edge_set.size() << std::endl;
-      }
-
-      if (end_loop || r[0] == static_cast<int32_t>(n)) {
-        r[0] = tmp;
-        break;
-      }
-
+      int32_t *r = rep.data();      
+      int32_t tmp = 0;      
+      MPI_Bcast(&end_loop, 1, MPI_INT32_T, 0, comm);
+      if (end_loop == 1) break;
+      MPI_Bcast(r, n, MPI_INT32_T, 0, comm);      
       std::fill(end_ind.begin(), end_ind.end(), edge_t(0,0,inf));
       profile("5.fill");
-      if (GetCommRank() == inspect)
-        std::cout << "after fill " << GetCommRank() << std::endl;
     }
-    if (GetCommRank() == 0) {
+    if (rank == 0) {
       sort(edge_set.begin(), edge_set.end(),
            [](edge_t &e1, edge_t &e2) { return e1.w < e2.w; });
       profile("sort");
@@ -410,8 +391,8 @@ public:
           now_time() - start).count() /
           1000000.
                 << "\n";
-      std::cout << edge_set.size() << std::endl;
-      std::cout << output_check() << std::endl;
+      std::cout << "edge_set: " << edge_set.size() << std::endl;
+      std::cout << "output_check: " << output_check() << std::endl;
     }
     // sort edges
 

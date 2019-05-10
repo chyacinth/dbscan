@@ -22,6 +22,7 @@
 #include <limits.h>
 #include <algorithm>
 
+
 /** Use MPI-GOFMM templates. */
 #include <gofmm_mpi.hpp>
 /** Use dense SPD matrices. */
@@ -50,6 +51,7 @@
 #endif
 
 using namespace std;
+using namespace std::chrono;
 using namespace hmlp;
 
 /**
@@ -65,20 +67,27 @@ using namespace hmlp;
  }
 int main( int argc, char *argv[] )
 {
+  using clock = std::chrono::system_clock;
+  using ms = std::chrono::microseconds;
   try
   {
     omp_set_dynamic(0);     // Explicitly disable dynamic teams
-    omp_set_num_threads(4); // Use 4 threads for all consecutive parallel regions
-
+    omp_set_num_threads(1); // Use 4 threads for all consecutive parallel regions    
     /** Use float as data type. */
+    std::cout << "hello\n";
+    #pragma omp parallel
+    #pragma omp single
+    std::cout << omp_get_num_threads();
     using T = double;
-    size_t core_k = 20;
+    size_t core_k = 35;
     /** [Required] Problem size. */
-    size_t n = 1000000;
+    size_t n = atoi(argv[1]);
+    printf("n is: %zd\n", n);
+    //size_t n = 1000000;
     /** Maximum leaf node size (not used in neighbor search). */
     size_t m = 128;
     /** [Required] Number of nearest neighbors. */
-    size_t k = 40;
+    size_t k = 70;
     /** Maximum off-diagonal rank (not used in neighbor search). */
     size_t s = 128;
     /** Approximation tolerance (not used in neighbor search). */
@@ -105,7 +114,23 @@ int main( int argc, char *argv[] )
     gofmm::Configuration<T> config2( GEOMETRY_DISTANCE, n, m, k, s, stol, budget );
     /** [Step#2] Create a distributed Gaussian kernel matrix with random 6D data. */
     DistData<STAR, CBLK, T> X( DIMENSION, n, CommGOFMM );
-    X.randn();
+
+    unsigned seed = 1221412;
+    std::default_random_engine generator( seed );
+    std::normal_distribution<T> distribution(0.0, 1.0);
+    for ( std::size_t i = 0; i < DIMENSION; i ++ ) {
+      for ( std::size_t j = 0; j < n; j ++ ) {
+        double point = distribution( generator );
+        if (j % size == rank) {
+          size_t aj = (j - rank) / size;
+          X.data()[aj * DIMENSION + i] = point;
+        }
+      }
+    }
+
+
+    if (77 % size == rank)
+      cout << "this is X: " << X(0, 77) << " " << X(1, 77) << endl;
 
     /*fstream file("/home1/05820/xychen/xychen/dbscan/data/2000input.txt");
     double x = 0;
@@ -118,38 +143,36 @@ int main( int argc, char *argv[] )
         X.data()[DIMENSION * local_cnt + 1] = y;
       }
       ++cnt;
-    }
-    //cout << "cnt == " << cnt << endl;*/
+    }*/
+    //cout << "cnt == " << cnt << endl;
 
 
 
     DistKernelMatrix<T, T> K2( X, CommGOFMM );
     /** [Step#3] Create a distributed randomized splitter. */
+    MPI_Barrier(CommGOFMM);
+    double t1 = MPI_Wtime();
+
     mpigofmm::randomsplit<DistKernelMatrix<T, T>, 2, T> rkdtsplitter2( K2 );
     /** [Step#4] Perform the iterative neighbor search. */
     auto neighbors2 = mpigofmm::FindNeighbors( K2, rkdtsplitter2, config2, CommGOFMM );
+    MPI_Barrier(CommGOFMM);
+    double t2 = MPI_Wtime();
+    if (rank == 0) {
+      printf("KNN time: %f second\n", t2 - t1);
+    }
+    if (rank == 1)
+      cout << "this is neighbors2: " << neighbors2(7, 1).first << " " << neighbors2(7, 1).second << endl;
+
     size_t row = neighbors2.row_owned();
     size_t col_owned = neighbors2.col_owned();
     size_t row_owned = neighbors2.row_owned();
-
-    /*for (size_t j = 0; j < neighbors2.col_owned(); ++j) {
-      for (size_t i = 0; i < neighbors2.row_owned(); ++i) {
-        neighbors2.data()[j * row + i].first = sqrt(neighbors2.data()[j * row + i].first);
-      }
-    }*/
-
-    /*if (rank == inspect) {
-      cout << "print neighbour2" << endl;
-      cout << neighbors2(1, inspect).second << " " << neighbors2(1, size + inspect).second << endl;
-    }*/
 
     struct pr {
       double first = 0;
       size_t second = 0;
       double coord[DIMENSION]{};
     };
-
-    //using pr = pair<T, size_t>;
 
     // init MPI
     MPI_Datatype etype;
@@ -158,16 +181,6 @@ int main( int argc, char *argv[] )
     MPI_Datatype types[3] = {MPI_DOUBLE, my_MPI_SIZE_T, MPI_DOUBLE};
     MPI_Type_create_struct(3, block_length, displacements, types, &etype);
     MPI_Type_commit(&etype);
-
-
-    /*if (rank == inspect) {
-      cout << endl;
-      for (size_t i = 0; i < 10; ++i) {
-        cout << "(" << neighbors2(core_k, rank + i * size).first << ", " << neighbors2(core_k, rank + i * size).second << ")  ";
-      }
-      cout << endl;
-    }*/
-
 
     vector<pr> data_send (neighbors2.col_owned());
     #pragma omp parallel for
@@ -181,27 +194,10 @@ int main( int argc, char *argv[] )
       }
     }
 
-    /*if (rank == 0) {
-      cout << "original X in process 0: col 0 ~ 30: " << endl;
-      for (int i = 0; i < 30; ++i) {
-        if (i % size == 0)
-          cout << "(" << X(0, i) << ", " << X(1, i) << ", " << X(2, i) << ")  ";
-      }
-      cout << endl;
-    }*/
-
     //TODO: change size?
     vector<pr> recv_data(n);
-    //cout << "data_send.size()" << data_send.size() << endl;
-    //cout << "recv_data.size()" << recv_data.size() << endl;
     MPI_Allgather(data_send.data(), static_cast<int>(data_send.size()), etype, recv_data.data(),
                   static_cast<int>(n / size), etype, CommGOFMM);
-
-    /*if (rank == inspect) {
-      cout << "received recv_data: column 0 ~ 15 " << endl;
-      cout << recv_data[500].first << " " << recv_data[500].second << endl;
-      cout << endl;
-    }*/
 
     vector<int> sums(size);
     for (int i = 0; i < size; ++i) {
@@ -212,51 +208,6 @@ int main( int argc, char *argv[] )
         sums[i] = 0;
       }
     }
-    /*if (rank == inspect) {
-      for (int i = 0; i < size; ++i) {
-        cout << sums[i] << " ";
-      }
-      cout << endl;
-    }*/
-
-    /*if (rank == inspect) {
-      size_t jj = 0;
-      cout << "final test: " << endl;
-      size_t i = 7;
-      size_t j = 367;
-      size_t actual_j = rank + j * size;
-      cout << "actual j: " << actual_j << endl;
-      jj = neighbors2(i, actual_j).second;
-
-      /*cout << neighbors2.data()[row * j + i].first << " " << neighbors2.data()[row * j + i].second << endl;
-      cout << neighbors2(i, actual_j).first << " " << neighbors2(i, actual_j).second << endl;
-      cout << endl;
-
-      cout << "1: " << neighbors2(core_k, actual_j).first << " " << neighbors2(core_k, actual_j).second << endl;*/
-
-      /*for (int i = 0; i < DIMENSION; ++i) {
-        cout << X(i, actual_j) << " ";
-      }*/
-
-      //cout << X(actual_j, neighbors2.data()[row * j + i].second) << " ";
-
-      /*cout << endl;
-      for (int jj = 0; jj < n; ++jj) {
-        if (jj != recv_data[sums[jj % size] + (jj - (jj % size)) / size].second) {
-          cout << "wrong!!";
-        }
-      }
-      cout << endl;
-    }*/
-
-    /*if (rank == 704 % size) {
-      cout << "2: " << neighbors2(core_k, 704).first << " " << neighbors2(core_k, 704).second << endl;
-      for (int i = 0; i < d; ++i) {
-        cout << X(i, 704) << " ";
-      }
-      cout << endl;
-    }*/
-
     DistData<STAR, CBLK, pair<T, size_t>> neighbors_final(neighbors2.row() - 1, neighbors2.col(), CommGOFMM);
 
     //cout << "row is: " << row << endl;
@@ -280,31 +231,50 @@ int main( int argc, char *argv[] )
         neighbors_final.data()[row * j + i - 1].second = other_j;
       }
     }
-
-    //cout << "final row & col: " << neighbors_final.row() << " " << neighbors_final.col() << endl;
-    //cout << "boruvka begins" << endl;
-
+    if (rank == 0) {
+      printf("start Boruvka\n");
+    }
+    MPI_Barrier(CommGOFMM);
+    double t3 = MPI_Wtime();
     hdbscan::Distributed_Boruvka<double, int32_t> boruvka(neighbors_final, CommGOFMM);
     boruvka.run();
-    //cout << "boruvka ends" << endl;
+    MPI_Barrier(CommGOFMM);
+    double t4 = MPI_Wtime();
 
     if (rank == 0) {
-      //cout << boruvka.edge_set.size() << endl;
-      //cout << "edge_set: " << endl;
+      printf("Boruvka time: %f second\n", t4 - t3);
+      for (auto it = boruvka.profiler.begin(); it != boruvka.profiler.end(); ++it) {
+        cout << it->first << ":\t\t" << it->second << '\n';
+      }
+      cout <<  boruvka.output_check() << endl;
+
       size_t edge_size = boruvka.edge_set.size();
       #pragma omp parallel for
       for (int i = 0; i < edge_size; ++i) {
         boruvka.edge_set[i].w = sqrt(boruvka.edge_set[i].w);
       }
-      cout << "start slt" << endl;
+
+      for (int i = 0; i < 10; ++i) {
+        cout << boruvka.edge_set[i].u << " " << boruvka.edge_set[i].v << " " << boruvka.edge_set[i].w << endl;
+      }
+      printf("start slt\n");
+      high_resolution_clock::time_point before = high_resolution_clock::now();
       hdbscan::SingleLinkageTree<double, int32_t> slt{boruvka.edge_set, core_k};
-      cout << "end slt" << endl;
-      cout << "slt.cluster_num_ " << slt.cluster_num_ << endl;
-      cout << "start condense" << endl;
+      high_resolution_clock::time_point after = high_resolution_clock::now();
+      auto duration = duration_cast<microseconds>( after - before ).count();
+      printf("Slt time: %f seconds\n", (static_cast<double>(duration) / 1000000));
+      
+      before = high_resolution_clock::now();
       hdbscan::CondensedTree<double, int32_t> ct{slt};
-      cout << "end condense" << endl;
-      ct.print();
-      cout << "end print" << endl;
+      after = high_resolution_clock::now();
+      duration = duration_cast<microseconds>( after - before ).count();
+      printf("condense tree time: %f seconds\n", (static_cast<double>(duration) / 1000000));
+
+      before = high_resolution_clock::now();
+      ct.print(false, true);
+      after = high_resolution_clock::now();
+      duration = duration_cast<microseconds>( after - before ).count();
+      printf("condense tree print time: %f seconds\n", (static_cast<double>(duration) / 1000000));
     }
     MPI_Barrier(CommGOFMM);
     /** [Step#5] HMLP API call to terminate the runtime. */

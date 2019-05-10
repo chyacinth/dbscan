@@ -9,7 +9,7 @@ namespace hdbscan {
   {  
    public:
     explicit CondensedTree(const SingleLinkageTree<T, U> &slt)
-      : clusters_(slt.cluster_num_), point_nums_(slt.node_nums_mst_),
+      : clusters_(slt.cluster_num_ + 1), point_nums_(slt.node_nums_mst_),
       minimum_cluster_size_(slt.minimum_cluster_size_) {
       int root = slt.nodes_.size() - 1;
       //clusters_.emplace_back();
@@ -17,14 +17,21 @@ namespace hdbscan {
       clusters_[0].remaining_nodes_num = slt.nodes_[root].size;
 #pragma omp parallel
 #pragma omp single
-      {
-        //std::cout << "start build" << endl;
+      {        
         //std::cout << "cluster_num_: " << slt.cluster_num_ << std::endl;
-        build(slt, root, cluster_num_++);
-        //std::cout << "end build" << endl;
-        //std::cout << "start extract" << endl;
-        extract_clusters();
-        //std::cout << "end extract" << endl;
+        std::chrono::high_resolution_clock::time_point before = std::chrono::high_resolution_clock::now();
+        build(slt, root, cluster_num_++);        
+//#pragma omp taskwait      
+        std::chrono::high_resolution_clock::time_point after = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>( after - before ).count();
+        printf("build time: %f seconds\n", (static_cast<double>(duration) / 1000000));
+
+
+        before = std::chrono::high_resolution_clock::now();
+        extract_clusters();      
+        after = std::chrono::high_resolution_clock::now();
+        std::chrono::duration_cast<std::chrono::microseconds>( after - before ).count();
+        printf("extract_clusters time: %f seconds\n", (static_cast<double>(duration) / 1000000));
       }
     }
     void build(const SingleLinkageTree<T, U> &slt, const U root, const U cluster_id) {
@@ -91,24 +98,41 @@ namespace hdbscan {
         clusters_[cluster_id].remaining_nodes_num = 0;
         clusters_[cluster_id].lambda_birth = 1 / node.distance;
 
-//#pragma omp task
-          build(slt, node.left, left_cluster);
-//#pragma omp task
-          build(slt, node.right, right_cluster);
+//#pragma omp task shared(slt, node, left_cluster) 
+      build(slt, node.left, left_cluster);
+
+//#pragma omp task shared(slt, node, right_cluster)
+      build(slt, node.right, right_cluster);
+
+          
 //#pragma omp taskwait
       }
     }
 
     void extract_clusters() {
       selected_ = std::vector<char>(cluster_num_);
-      //std::cout << "start 1" << std::endl;
-      update_stability(0);
-      //std::cout << "start 2" << std::endl;
+      
+      std::chrono::high_resolution_clock::time_point before = std::chrono::high_resolution_clock::now();
+      update_stability(0);  
+      std::chrono::high_resolution_clock::time_point after = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::microseconds>( after - before ).count();
+      printf("update_stability time: %f seconds\n", (static_cast<double>(duration) / 1000000));
+      
+      before = std::chrono::high_resolution_clock::now();
       selected_cnt_ = select_helper(0);
-      //std::cout << "start 3" << std::endl;
+      after = std::chrono::high_resolution_clock::now();
+      duration = std::chrono::duration_cast<std::chrono::microseconds>( after - before ).count();
+      printf("select_helper time: %f seconds\n", (static_cast<double>(duration) / 1000000));
+
+      before = std::chrono::high_resolution_clock::now();
       collect_helper(0);
-      //std::cout << "start 4" << std::endl;
-//#pragma omp parallel for
+      after = std::chrono::high_resolution_clock::now();
+      duration = std::chrono::duration_cast<std::chrono::microseconds>( after - before ).count();
+      printf("collect_helper time: %f seconds\n", (static_cast<double>(duration) / 1000000));
+      
+      before = std::chrono::high_resolution_clock::now();
+
+#pragma omp parallel for
       for (U i = 0; i < cluster_num_; ++i) {
         if (selected_[i]) {
           int left_result_size = (clusters_[i].left == -1)? 0 : clusters_[clusters_[i].left].result_size;
@@ -119,11 +143,14 @@ namespace hdbscan {
           collect_points2(clusters_[i].left, clusters_[i].fall_out_nodes.data() + ori_size);
 #pragma omp task
           collect_points2(clusters_[i].right, clusters_[i].fall_out_nodes.data() + ori_size + left_result_size);
-#pragma omp taskwait
+//#pragma omp taskwait
         }        
       }
-      //std::cout << "start 5" << std::endl;
+#pragma omp taskwait
 
+      after = std::chrono::high_resolution_clock::now();
+      duration = std::chrono::duration_cast<std::chrono::microseconds>( after - before ).count();
+      printf("collect2 time: %f seconds\n", (static_cast<double>(duration) / 1000000));
     }
 
     T update_stability(U root_id) {
@@ -137,13 +164,13 @@ namespace hdbscan {
       // get left and right stability
       T left_stability = 0;
       T right_stability = 0;
-#pragma omp task shared(left_stability)
-        left_stability = update_stability(root_node.left);
+//#pragma omp task shared(left_stability)
+      left_stability = update_stability(root_node.left);
 
-#pragma omp task shared(right_stability)
+//#pragma omp task shared(right_stability)
       right_stability = update_stability(root_node.right);
 
-#pragma omp taskwait
+//#pragma omp taskwait
       if (left_stability + right_stability >= root_node.stability) {
         root_node.stability = left_stability + right_stability;
       } else if (root_id != 0) {
@@ -159,11 +186,11 @@ namespace hdbscan {
       if (root == -1) return 0;
       int lsize = 0;
       int rsize = 0;
-#pragma omp task shared(lsize)
+//#pragma omp task shared(lsize)
       lsize = collect_helper(clusters_[root].left);
-#pragma omp task shared(rsize)
+//#pragma omp task shared(rsize)
       rsize = collect_helper(clusters_[root].right);
-#pragma omp taskwait
+//#pragma omp taskwait
       clusters_[root].result_size = clusters_[root].fall_out_nodes.size() + lsize + rsize;
       return clusters_[root].result_size;
     }
@@ -236,12 +263,12 @@ namespace hdbscan {
         return 1;
       } else {
         int lsize = 0;
-#pragma omp task shared(lsize)
+//#pragma omp task shared(lsize)
         lsize = select_helper(clusters_[cluster_id].left);
         int rsize = 0;
-#pragma omp task shared(rsize)
+//#pragma omp task shared(rsize)
         rsize = select_helper(clusters_[cluster_id].right);
-#pragma omp taskwait
+//#pragma omp taskwait
         return lsize + rsize;
       }
     }
