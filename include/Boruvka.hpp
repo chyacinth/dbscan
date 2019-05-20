@@ -1,6 +1,5 @@
 #ifndef BORUVKA_H_
 #define BORUVKA_H_
-//#define NDEBUG
 
 #include <algorithm>
 #include <iostream>
@@ -18,7 +17,7 @@
 #include <unordered_set>
 
 #define par_for _Pragma("omp parallel for") for
-#define par_for_256 _Pragma("omp parallel for schedule (static,256)") for
+// #define par_for_256 _Pragma("omp parallel for schedule (static,256)") for
 // #define par_for for
 
 namespace hdbscan {
@@ -36,9 +35,16 @@ using edge_p = std::pair<double, size_t>;
 
 template <typename T=double, typename U=uint32_t> class Boruvka {
 
-  constexpr static auto now_time = std::chrono::high_resolution_clock::now;
+  T inf = std::numeric_limits<T>::infinity();
+  const U n, m;
+  U vertex_left;
+  std::vector<edge_p> edges;
+  std::vector<U> rep;
+  std::vector<edge_t> end_ind;
 
+  constexpr static auto now_time = std::chrono::high_resolution_clock::now;
   std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
+
   inline void reset_clock() { timestamp = now_time(); }
   inline void profile(std::string name, bool p=false) {
     auto time = std::chrono::duration_cast<std::chrono::microseconds>(now_time() - timestamp).count() /
@@ -83,10 +89,10 @@ template <typename T=double, typename U=uint32_t> class Boruvka {
   }
 
   inline void pwrite(edge_t & ptr, edge_t const & new_val) {
-    edge_t old_val;
-    do {
+    edge_t old_val = ptr;
+    while (new_val.w < old_val.w and !reinterpret_cast<std::atomic<edge_t>&>(ptr).compare_exchange_strong(old_val, new_val)) {
       old_val = ptr;
-    } while (new_val.w < old_val.w and !reinterpret_cast<std::atomic<edge_t>&>(ptr).compare_exchange_strong(old_val, new_val));
+    }
   }
 
   inline void find_min() {
@@ -137,15 +143,20 @@ template <typename T=double, typename U=uint32_t> class Boruvka {
         rep[i] = rep[rep[i]];
   }
 
-public:
-  T inf = std::numeric_limits<T>::infinity();
-  const U n, m;
-  U vertex_left;
-  std::vector<edge_p> edges;
-  std::vector<edge_t> edge_set;
-  std::vector<U> rep;
-  std::vector<edge_t> end_ind;
+  void insert_inf() {
+    std::unordered_set<U> s;
+    s.insert(rep[0]);
+    U last = rep[0];
+    for (size_t i = 1; i < n; i++) {
+      if (s.find(rep[i]) != s.end()) continue;
+      edge_set.push_back(edge_t(last, rep[i], inf));
+      last = rep[i];
+      s.insert(last);
+    }
+  }
 
+public:
+  std::vector<edge_t> edge_set;
   std::map<std::string, double> profiler;
 
   Boruvka(U n_, U m_) : n(n_), m(m_), vertex_left(n_) {
@@ -213,16 +224,9 @@ public:
 
       pointer_jump();
       profile("3.shrink");
+
       if (count_relabel == 0) {
-        std::unordered_set<U> s;
-        s.insert(rep[0]);
-        U last = rep[0];
-        for (size_t i = 1; i < n; i++) {
-          if (s.find(rep[i]) != s.end()) continue;
-          edge_set.push_back(edge_t(last, rep[i], inf));
-          last = rep[i];
-          s.insert(last);
-        }
+        insert_inf();
         profile("insert_inf");
         break;
       }
@@ -231,13 +235,13 @@ public:
       profile("5.fill");
     }
 
-    sort(edge_set.begin(), edge_set.end(),
-         [](edge_t &e1, edge_t &e2) { return e1.w < e2.w; });
+    sort(edge_set.begin(), edge_set.end(), [](edge_t &e1, edge_t &e2) { return e1.w < e2.w; });
+    par_for (size_t i = 0; i < edge_set.size(); i++) {
+      edge_set[i].w = pow(edge_set[i].w, 0.5);
+    }
     profile("sort");
 
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(now_time() - start).count() /
-                     1000000.
-              << "\n";
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(now_time() - start).count() / 1000000. << "\n";
     std::cout << edge_set.size() << std::endl;
   }
 };
